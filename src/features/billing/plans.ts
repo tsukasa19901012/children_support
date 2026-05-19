@@ -22,11 +22,13 @@ export const PLANS: Plan[] = [
     stripePriceId: "",
     dailyLimit: null,
     historyDays: null,
-    memoryEnabled: false,
-    personalizeEnabled: false,
+    memoryEnabled: true,
+    personalizeEnabled: true,
     features: [
       "AIチャット無制限",
-      "通常AI",
+      "会話履歴（無制限）",
+      "お子さんの性格・傾向を学習",
+      "家庭環境を考慮した回答",
     ],
   },
   {
@@ -40,8 +42,11 @@ export const PLANS: Plan[] = [
     personalizeEnabled: true,
     features: [
       "AIチャット無制限",
-      "長期記憶",
-      "パーソナライズ",
+      "会話履歴（無制限）",
+      "お子さんの性格・傾向を学習",
+      "家庭環境を考慮した回答",
+      "より深い長期記憶（30往復分）",
+      "優先サポート",
     ],
   },
 ];
