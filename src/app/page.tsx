@@ -8,6 +8,7 @@ import { UpgradeModal } from "../features/billing/components/UpgradeModal";
 import { useChatHistory } from "../features/chat/hooks/useChatHistory";
 import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
+import { useVisualViewportLayout } from "../hooks/useVisualViewportLayout";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
 import { formatAge, buildChildContext } from "../lib/childAge";
@@ -37,10 +38,17 @@ export default function Home() {
   const [deleting, setDeleting] = useState(false);
   const [rebuildingMemory, setRebuildingMemory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const viewport = useVisualViewportLayout();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (viewport.height > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [viewport.height]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -177,8 +185,18 @@ export default function Home() {
     );
   }
 
+  const shellStyle =
+    viewport.height > 0
+      ? { top: viewport.offsetTop, height: viewport.height }
+      : undefined;
+
   return (
-    <div className="flex flex-col h-dvh bg-gray-100">
+    <div
+      className={`fixed left-0 right-0 z-0 flex flex-col bg-gray-100 overflow-hidden ${
+        viewport.height === 0 ? "h-dvh" : ""
+      }`}
+      style={shellStyle}
+    >
       {/* Header */}
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="relative flex items-center gap-1">
@@ -360,10 +378,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* Input — text-base(16px)でiOSの自動ズームを防止、items-endで送信ボタンを下揃え */}
+      {/* Input — globals.css で 16px 固定（iOS 自動ズーム防止） */}
       <footer className="shrink-0 bg-white border-t px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
         <textarea
-          className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 text-base leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
+          className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
           rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -375,6 +393,11 @@ export default function Home() {
               : "育児の相談を入力..."
           }
           disabled={inputDisabled}
+          onFocus={() => {
+            requestAnimationFrame(() => {
+              bottomRef.current?.scrollIntoView({ block: "end" });
+            });
+          }}
         />
         <button
           type="button"
