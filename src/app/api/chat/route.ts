@@ -16,6 +16,7 @@ type Message = {
 type RequestBody = {
   messages: Message[];
   childContext?: string;
+  childId?: string;
 };
 
 const ALLOWED_ROLES = new Set<string>(["user", "assistant"]);
@@ -37,9 +38,74 @@ function getJSTDayStart(): Date {
 const BASE_SYSTEM_PROMPT =
   "あなたは育児専門の温かいAIアシスタントです。保護者の不安を受け止め、まず共感を示してから、簡潔で実用的なアドバイスをしてください。医療診断は行わず、必要な場合は専門家への相談を促してください。";
 
-function buildSystemPrompt(childContext?: string): string {
-  if (!childContext) return BASE_SYSTEM_PROMPT;
-  return `${BASE_SYSTEM_PROMPT}\n\n【相談者のお子さん】${childContext}回答時は子どもの名前・月齢・年齢を考慮してください。`;
+function buildSystemPrompt(childContext?: string, memory?: string | null): string {
+  let prompt = BASE_SYSTEM_PROMPT;
+  if (childContext) {
+    prompt += `\n\n【相談者のお子さん】${childContext}回答時は子どもの名前・月齢・年齢を考慮してください。`;
+  }
+  if (memory) {
+    prompt += `\n\n【これまでの会話から学習した情報】\n${memory}\nこの情報を踏まえて、より的確で温かい回答をしてください。`;
+  }
+  return prompt;
+}
+
+/** 子どものメモリをDBから取得する（Lite/Pro のみ） */
+async function fetchChildMemory(userId: string): Promise<{ id: string; memory: string | null } | null> {
+  const db = createServiceSupabaseClient();
+  const { data } = await db
+    .from("children")
+    .select("id, memory")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/** 会話内容からメモリを更新する（非同期・非致命的） */
+async function updateChildMemory(
+  childId: string,
+  currentMemory: string | null,
+  userMessage: string,
+  aiMessage: string,
+  openai: { chat: { completions: { create: Function } } }
+): Promise<void> {
+  try {
+    const memoryPrompt = currentMemory
+      ? `以下は子どもについての既存の学習メモです:\n${currentMemory}\n\n`
+      : "";
+
+    const extractPrompt = `${memoryPrompt}以下の育児相談の会話から、子どもの性格・特徴・家庭環境・よくある悩みに関する新たな情報を抽出し、学習メモを更新してください。
+重複は排除し、400文字以内で以下の形式でまとめてください（該当なければ省略可）:
+
+【子どもの特徴】
+- （性格・行動パターンなど）
+
+【家庭環境】
+- （家族構成・生活スタイルなど）
+
+【よくある悩み・傾向】
+- （睡眠・食事・癇癪・兄弟関係など）
+
+---
+保護者の相談: ${userMessage}
+AIの回答: ${aiMessage}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: extractPrompt }],
+      max_tokens: 400,
+    });
+
+    const newMemory = completion.choices[0]?.message?.content?.trim();
+    if (!newMemory) return;
+
+    const db = createServiceSupabaseClient();
+    await db
+      .from("children")
+      .update({ memory: newMemory, updated_at: new Date().toISOString() })
+      .eq("id", childId);
+  } catch (err) {
+    console.warn("[/api/chat] メモリ更新失敗（非致命的）:", err);
+  }
 }
 
 const UPGRADE_MESSAGE =
@@ -138,7 +204,7 @@ export async function POST(request: NextRequest) {
 
     // 2. リクエスト検証
     const body: RequestBody = await request.json();
-    const { messages, childContext } = body;
+    const { messages, childContext, childId } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -176,9 +242,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. DBからプランを取得
+    // 3. DBからプランを取得、Lite/Proはメモリも取得
     const planId = await fetchUserPlan(userId);
     const plan = getPlan(planId);
+    const hasMemory = planId === "lite" || planId === "pro";
+    const childMemoryData = hasMemory ? await fetchChildMemory(userId) : null;
 
     // 4. free プランの回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
     const db = createServiceSupabaseClient();
@@ -224,7 +292,7 @@ export async function POST(request: NextRequest) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const MODEL = "gpt-4o-mini";
-    const systemPrompt = buildSystemPrompt(childContext);
+    const systemPrompt = buildSystemPrompt(childContext, childMemoryData?.memory);
     const completion = await openai.chat.completions.create({
       model: MODEL,
       messages: [
@@ -236,7 +304,19 @@ export async function POST(request: NextRequest) {
     const aiMessage = completion.choices[0]?.message?.content ?? "";
     const usage = completion.usage;
 
-    // 7. アシスタントメッセージ保存 & トークン使用量記録（並列・非致命的）
+    // 7. Lite/Pro: メモリを非同期更新（レスポンスをブロックしない）
+    const effectiveChildId = childMemoryData?.id ?? childId;
+    if (hasMemory && effectiveChildId && lastUserMessage) {
+      void updateChildMemory(
+        effectiveChildId,
+        childMemoryData?.memory ?? null,
+        lastUserMessage.content,
+        aiMessage,
+        openai
+      );
+    }
+
+    // 8. アシスタントメッセージ保存 & トークン使用量記録（並列・非致命的）
     // free プラン以外はここでユーザーメッセージも保存する
     const savePromises: Promise<void>[] = [
       usage

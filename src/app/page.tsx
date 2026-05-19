@@ -15,7 +15,7 @@ type Message = ChatMessage;
 export default function Home() {
   const [input, setInput] = useState("");
   const { userId } = useAuthUserId();
-  const { childName, childBirthday, childChecked } = useChildRedirect(userId);
+  const { childId, childName, childBirthday, childChecked } = useChildRedirect(userId);
   const { messages, setMessages, historyLoading } = useChatHistory(userId);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -50,6 +50,7 @@ export default function Home() {
           childContext: childName && childBirthday
             ? buildChildContext(childName, childBirthday)
             : undefined,
+          childId: childId ?? undefined,
         }),
       });
 

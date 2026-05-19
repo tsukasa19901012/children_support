@@ -10,6 +10,7 @@ import { createClient } from "../../../lib/supabase-browser";
  */
 export function useChildRedirect(userId: string | null) {
   const router = useRouter();
+  const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState<string | null>(null);
   const [childBirthday, setChildBirthday] = useState<string | null>(null);
   const [childChecked, setChildChecked] = useState(false);
@@ -20,13 +21,14 @@ export function useChildRedirect(userId: string | null) {
     const supabase = createClient();
     supabase
       .from("children")
-      .select("name, birthday")
+      .select("id, name, birthday")
       .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => {
         if (!data) {
           router.replace("/onboarding");
         } else {
+          setChildId(data.id);
           setChildName(data.name);
           setChildBirthday(data.birthday);
           setChildChecked(true);
@@ -34,5 +36,5 @@ export function useChildRedirect(userId: string | null) {
       });
   }, [userId, router]);
 
-  return { childName, childBirthday, childChecked };
+  return { childId, childName, childBirthday, childChecked };
 }
