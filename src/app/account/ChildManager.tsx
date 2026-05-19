@@ -57,8 +57,21 @@ export function ChildManager({ isPro }: Props) {
 
   if (loading) return <div className="h-16 animate-pulse bg-gray-100 rounded-2xl" />;
 
+  const hasMultiple = children.length > 1;
+  const needsSelection = !isPro && hasMultiple;
+
   return (
     <div className="space-y-3">
+      {/* 非Proで複数の子どもがいる場合のバナー */}
+      {needsSelection && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs text-amber-700 font-medium mb-0.5">相談するお子さんを選択してください</p>
+          <p className="text-xs text-amber-600">
+            Proプランに戻るとすべてのお子さんのデータが復活します
+          </p>
+        </div>
+      )}
+
       {children.map((child) => {
         const isActive = child.id === activeChildId;
         return (
@@ -68,7 +81,7 @@ export function ChildManager({ isPro }: Props) {
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full ${isActive ? "bg-blue-500" : "bg-gray-300"}`} />
+              <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "bg-blue-500" : "bg-gray-300"}`} />
               <div>
                 <p className="text-sm font-semibold text-gray-800">
                   {child.name}
@@ -83,7 +96,7 @@ export function ChildManager({ isPro }: Props) {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* 編集ボタン */}
+              {/* 編集ボタン（全プラン） */}
               <button
                 type="button"
                 onClick={() => router.push(`/onboarding?mode=edit&childId=${child.id}`)}
@@ -92,15 +105,15 @@ export function ChildManager({ isPro }: Props) {
                 編集
               </button>
 
-              {/* アクティブ切り替え（Proのみ複数の場合） */}
-              {isPro && !isActive && (
+              {/* 切り替えボタン（全プラン・非アクティブのみ） */}
+              {!isActive && (
                 <button
                   type="button"
                   disabled={switching === child.id}
                   onClick={() => handleSwitch(child.id)}
                   className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 disabled:opacity-50"
                 >
-                  {switching === child.id ? "..." : "切り替え"}
+                  {switching === child.id ? "..." : needsSelection ? "選択する" : "切り替え"}
                 </button>
               )}
 
@@ -124,6 +137,13 @@ export function ChildManager({ isPro }: Props) {
           <span className="text-lg leading-none">+</span>
           子どもを追加する
         </button>
+      )}
+
+      {/* 非Proで複数の子どもがいる場合：アップグレード案内 */}
+      {needsSelection && (
+        <p className="text-xs text-center text-gray-400 pt-1">
+          Proプランにアップグレードするとすべてのお子さんに同時対応できます
+        </p>
       )}
     </div>
   );
