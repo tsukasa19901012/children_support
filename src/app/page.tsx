@@ -14,6 +14,7 @@ import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
 import { DeleteConfirmDialog } from "../features/chat/components/DeleteConfirmDialog";
 import { deleteMessagesFromDb } from "../features/chat/lib/deleteMessages";
+import { rebuildChildMemory } from "../features/chat/lib/rebuildMemory";
 
 type Message = ChatMessage;
 
@@ -34,6 +35,7 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [rebuildingMemory, setRebuildingMemory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -141,7 +143,20 @@ export default function Home() {
         return false;
       });
     });
+
     setDeleting(false);
+
+    // Lite/Pro: 残り履歴から学習メモリを再計算
+    const hasMemory = planId === "lite" || planId === "pro";
+    if (hasMemory && childId) {
+      setRebuildingMemory(true);
+      const rebuildErr = await rebuildChildMemory(childId);
+      setRebuildingMemory(false);
+      if (rebuildErr) {
+        console.warn("[delete] メモリ再計算失敗:", rebuildErr);
+      }
+    }
+
     setDeleteTarget(null);
   };
 
@@ -376,8 +391,10 @@ export default function Home() {
       {deleteTarget && (
         <DeleteConfirmDialog
           onConfirm={confirmDelete}
-          onCancel={() => !deleting && setDeleteTarget(null)}
+          onCancel={() => !deleting && !rebuildingMemory && setDeleteTarget(null)}
           deleting={deleting}
+          rebuilding={rebuildingMemory}
+          showMemoryNote={planId === "lite" || planId === "pro"}
         />
       )}
     </div>
