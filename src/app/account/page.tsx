@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AccountActions } from "./AccountActions";
+import { ChildManager } from "./ChildManager";
 
 const PLAN_COLOR: Record<PlanId, string> = {
   free: "bg-gray-100 text-gray-700",
@@ -142,6 +143,19 @@ export default async function AccountPage() {
               <span className="text-sm text-muted-foreground">メールアドレス</span>
               <span className="text-sm text-gray-700 truncate max-w-[180px]">{user.email}</span>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 子ども情報カード */}
+        <Card>
+          <CardHeader>
+            <CardTitle>お子さんの情報</CardTitle>
+            {planId === "pro" && (
+              <CardDescription>Proプランは複数のお子さんを登録できます</CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            <ChildManager isPro={planId === "pro"} />
           </CardContent>
         </Card>
 

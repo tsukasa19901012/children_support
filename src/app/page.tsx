@@ -90,11 +90,18 @@ export default function Home() {
     <div className="flex flex-col h-dvh bg-gray-100">
       {/* Header */}
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <span className="font-bold text-base">
-          {childName && childBirthday
-            ? `${childName}（${formatAge(childBirthday)}）`
-            : "育児AIチャット"}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-base">
+            {childName && childBirthday
+              ? `${childName}（${formatAge(childBirthday)}）`
+              : "育児AIチャット"}
+          </span>
+          {planId === "pro" && (
+            <Link href="/account" className="text-xs text-blue-400 hover:text-blue-600 leading-none">
+              ⇄
+            </Link>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <PlanBadge planId={planId} remaining={remaining} />
           {isFree && (
