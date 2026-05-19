@@ -120,7 +120,7 @@ function LoginForm() {
             <p className="text-sm text-gray-600 mb-4 text-center leading-relaxed">
               <span className="font-medium text-gray-800">{email}</span> に
               <br />
-              8桁の確認コードを送りました
+              6桁の確認コードを送りました
             </p>
 
             <input
@@ -128,7 +128,7 @@ function LoginForm() {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={8}
+              maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               placeholder="123456"
@@ -142,7 +142,7 @@ function LoginForm() {
 
             <button
               type="submit"
-              disabled={status === "verifying" || code.length < 8}
+              disabled={status === "verifying" || code.length < 6}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
             >
               {status === "verifying" ? "確認中..." : "ログイン"}
@@ -201,7 +201,7 @@ function LoginForm() {
             </button>
 
             <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
-              メールアドレスに8桁の確認コードを送ります。
+              メールアドレスに6桁の確認コードを送ります。
               <br />
               パスワードは不要です。
             </p>
