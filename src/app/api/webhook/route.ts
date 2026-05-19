@@ -42,6 +42,22 @@ async function updateUserPlan(
   }
 }
 
+/**
+ * Stripe の顧客IDからユーザーを特定して free プランに戻す。
+ */
+async function downgradeToFree(stripeCustomerId: string): Promise<void> {
+  const db = createServiceSupabaseClient();
+
+  const { error } = await db
+    .from("users")
+    .update({ plan: "free" })
+    .eq("stripe_customer_id", stripeCustomerId);
+
+  if (error) {
+    throw new Error(`free プランへのダウングレード失敗: ${error.message}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
   if (!stripe) {
@@ -100,6 +116,33 @@ export async function POST(request: NextRequest) {
       console.error("[webhook] プラン更新失敗:", err);
       return NextResponse.json(
         { error: "プラン更新に失敗しました。" },
+        { status: 500 }
+      );
+    }
+  }
+
+  // サブスクリプション解約・支払い失敗 → free プランに戻す
+  if (
+    event.type === "customer.subscription.deleted" ||
+    event.type === "invoice.payment_failed"
+  ) {
+    const obj = event.data.object as { customer?: string | { id: string } };
+    const customerId = typeof obj.customer === "string"
+      ? obj.customer
+      : obj.customer?.id;
+
+    if (!customerId) {
+      console.error("[webhook] customer ID が取得できません:", event.type);
+      return NextResponse.json({ received: true });
+    }
+
+    try {
+      await downgradeToFree(customerId);
+      console.log(`[webhook] free プランにダウングレード customerId=${customerId} event=${event.type}`);
+    } catch (err) {
+      console.error("[webhook] ダウングレード失敗:", err);
+      return NextResponse.json(
+        { error: "ダウングレードに失敗しました。" },
         { status: 500 }
       );
     }
