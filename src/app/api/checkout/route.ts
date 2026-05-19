@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "../../../lib/stripe";
 import { getPlan } from "../../../features/billing/plans";

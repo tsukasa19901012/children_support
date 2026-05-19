@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { getPlan } from "../../../features/billing/plans";
