@@ -274,7 +274,10 @@ export async function POST(request: NextRequest) {
         if (insertedMessageId) {
           await db.from("messages").delete().eq("id", insertedMessageId);
         }
-        return NextResponse.json({ message: getUpgradeMessage(plan.dailyLimit!) });
+        return NextResponse.json(
+          { error: getUpgradeMessage(plan.dailyLimit!), limitReached: true },
+          { status: 429 }
+        );
       }
     }
 

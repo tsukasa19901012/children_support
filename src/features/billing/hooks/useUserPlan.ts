@@ -12,7 +12,11 @@ type StoredUsage = {
   count: number;
 };
 
-const today = (): string => new Date().toISOString().slice(0, 10);
+/** JST 基準の今日の日付 "YYYY-MM-DD" */
+const today = (): string => {
+  const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return jstNow.toISOString().slice(0, 10);
+};
 
 const loadUsage = (): StoredUsage => {
   try {
@@ -59,10 +63,15 @@ export const useUserPlan = (): UserPlan => {
     });
   }, []);
 
+  const syncUsageToLimit = useCallback((limit: number) => {
+    setUsedToday(limit);
+    saveUsage({ date: today(), count: limit });
+  }, []);
+
   const plan = getPlan(planId);
   const remaining =
     plan.dailyLimit === null ? null : Math.max(0, plan.dailyLimit - usedToday);
   const canSend = plan.dailyLimit === null || usedToday < plan.dailyLimit;
 
-  return { planId, usedToday, remaining, canSend, recordUsage };
+  return { planId, usedToday, remaining, canSend, recordUsage, syncUsageToLimit };
 };

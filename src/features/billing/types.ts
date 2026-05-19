@@ -26,4 +26,6 @@ export type UserPlan = {
   canSend: boolean;
   /** 使用回数を1増やす */
   recordUsage: () => void;
+  /** 使用回数をlimitに強制同期（上限到達時） */
+  syncUsageToLimit: (limit: number) => void;
 };

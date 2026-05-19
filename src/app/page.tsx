@@ -21,7 +21,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { canSend, remaining, planId, usedToday, recordUsage } = useUserPlan();
+  const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,7 +37,6 @@ export default function Home() {
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
-    recordUsage();
 
     try {
       const res = await fetch("/api/chat", {
@@ -55,9 +54,18 @@ export default function Home() {
         }),
       });
 
+      // 上限到達: カウントを上限値に同期してモーダルを表示
+      if (res.status === 429) {
+        const limit = getPlan(planId).dailyLimit;
+        if (limit !== null) syncUsageToLimit(limit);
+        setShowUpgrade(true);
+        return;
+      }
+
       if (!res.ok) throw new Error(`status: ${res.status}`);
 
       const data: { message: string } = await res.json();
+      recordUsage(); // 成功時のみカウントを増やす
       setMessages((prev) => [...prev, { role: "ai", text: data.message }]);
     } catch {
       setMessages((prev) => [
