@@ -18,6 +18,8 @@ export type Plan = {
 
 export type UserPlan = {
   planId: PlanId;
+  /** DBからプラン取得済み（未取得時はUIを出さない） */
+  planLoaded: boolean;
   /** 本日の送信回数 */
   usedToday: number;
   /** 残り送信回数（null = 無制限） */

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getPlan } from "../plans";
+import { loadCachedPlan, saveCachedPlan } from "../planCache";
 import type { PlanId, UserPlan } from "../types";
 import { createClient } from "../../../lib/supabase-browser";
 
@@ -36,6 +37,7 @@ const saveUsage = (usage: StoredUsage): void => {
 
 export const useUserPlan = (userId: string | null): UserPlan => {
   const [planId, setPlanId] = useState<PlanId>("free");
+  const [planLoaded, setPlanLoaded] = useState(false);
   const [usedToday, setUsedToday] = useState(0);
 
   useEffect(() => {
@@ -43,7 +45,17 @@ export const useUserPlan = (userId: string | null): UserPlan => {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setPlanLoaded(false);
+      return;
+    }
+
+    const cached = loadCachedPlan(userId);
+    if (cached) {
+      setPlanId(cached);
+      setPlanLoaded(true);
+    }
+
     const supabase = createClient();
     supabase
       .from("users")
@@ -51,7 +63,10 @@ export const useUserPlan = (userId: string | null): UserPlan => {
       .eq("id", userId)
       .single()
       .then(({ data }) => {
-        if (data?.plan) setPlanId(data.plan as PlanId);
+        const id = (data?.plan as PlanId | null) ?? "free";
+        setPlanId(id);
+        saveCachedPlan(userId, id);
+        setPlanLoaded(true);
       });
   }, [userId]);
 
@@ -73,5 +88,5 @@ export const useUserPlan = (userId: string | null): UserPlan => {
     plan.dailyLimit === null ? null : Math.max(0, plan.dailyLimit - usedToday);
   const canSend = plan.dailyLimit === null || usedToday < plan.dailyLimit;
 
-  return { planId, usedToday, remaining, canSend, recordUsage, syncUsageToLimit };
+  return { planId, planLoaded, usedToday, remaining, canSend, recordUsage, syncUsageToLimit };
 };

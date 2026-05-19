@@ -6,6 +6,7 @@ import type { PlanId } from "../../features/billing/types";
 import { getJSTDayStartISO } from "../../lib/date";
 import { AccountActions } from "./AccountActions";
 import { ChildManager } from "./ChildManager";
+import { PlanCacheWriter } from "../../features/billing/components/PlanCacheWriter";
 
 const PLAN_COLOR: Record<PlanId, string> = {
   free: "bg-gray-100 text-gray-700",
@@ -60,6 +61,7 @@ export default async function AccountPage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
+      <PlanCacheWriter userId={user.id} planId={planId} />
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
           ← チャットに戻る

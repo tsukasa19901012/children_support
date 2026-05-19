@@ -28,7 +28,7 @@ export default function Home() {
   const [showChildPicker, setShowChildPicker] = useState(false);
   const { userId } = useAuthUserId();
   const { childId, childName, childBirthday, childChecked, allChildren, switchChild } = useChildRedirect(userId);
-  const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan(userId);
+  const { canSend, remaining, planId, planLoaded, usedToday, recordUsage, syncUsageToLimit } = useUserPlan(userId);
   const historyDays = getPlan(planId).historyDays;
   const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
   const [loading, setLoading] = useState(false);
@@ -160,8 +160,8 @@ export default function Home() {
     setDeleteTarget(null);
   };
 
-  const isLimited = !canSend;
-  const isFree = planId === "free";
+  const isLimited = planLoaded && !canSend;
+  const isFree = planLoaded && planId === "free";
   const inputDisabled = loading || isLimited;
   const dailyLimit = getPlan(planId).dailyLimit;
 
@@ -183,7 +183,7 @@ export default function Home() {
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="relative flex items-center gap-1">
           {/* 子ども名 — Proで複数いる場合はタップで切替 */}
-          {planId === "pro" && allChildren.length > 1 ? (
+          {planLoaded && planId === "pro" && allChildren.length > 1 ? (
             <button
               type="button"
               onClick={() => setShowChildPicker((v) => !v)}
@@ -241,7 +241,7 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
-          <PlanBadge planId={planId} remaining={remaining} />
+          {planLoaded && <PlanBadge planId={planId} remaining={remaining} />}
           {isFree && (
             <button
               type="button"
