@@ -10,6 +10,7 @@ import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
 import { useKeyboardInset } from "../hooks/useKeyboardInset";
 import { useElementHeight } from "../hooks/useElementHeight";
+import { useAutoResizeTextarea } from "../hooks/useAutoResizeTextarea";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
 import { formatAge, buildChildContext } from "../lib/childAge";
@@ -42,7 +43,8 @@ export default function Home() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const keyboardInset = useKeyboardInset();
-  const composerHeight = useElementHeight(composerRef, [isLimited, childChecked]);
+  const composerHeight = useElementHeight(composerRef, [isLimited, childChecked, input]);
+  const inputRef = useAutoResizeTextarea(input, 10);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -374,8 +376,9 @@ export default function Home() {
         )}
         <footer className="px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end touch-manipulation">
           <textarea
+            ref={inputRef}
             data-chat-input
-            className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
+            className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none overflow-hidden"
             style={{ fontSize: "16px" }}
             rows={1}
             value={input}
