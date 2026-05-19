@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 import { useUserPlan } from "../features/billing/hooks/useUserPlan";
 import { UpgradeModal } from "../features/billing/components/UpgradeModal";
 import { useChatHistory } from "../features/chat/hooks/useChatHistory";
@@ -146,13 +147,28 @@ export default function Home() {
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${
+              className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed ${
                 m.role === "user"
                   ? "bg-blue-500 text-white rounded-br-none"
                   : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
               }`}
             >
-              {m.text}
+              {m.role === "user" ? (
+                <span className="whitespace-pre-wrap">{m.text}</span>
+              ) : (
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                    strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
+                    li: ({ children }) => <li>{children}</li>,
+                  }}
+                >
+                  {m.text}
+                </ReactMarkdown>
+              )}
             </div>
           </div>
         ))}
