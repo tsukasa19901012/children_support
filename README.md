@@ -142,24 +142,13 @@ CRON_SECRET=任意のランダム文字列
 
 ### 3. Supabase のマイグレーションを実行
 
-Supabase Dashboard → SQL Editor で以下のファイルを**順番に**実行してください。
-
-**必ず上から順番に実行してください。**
+Supabase Dashboard → SQL Editor で以下の**1ファイルだけ**実行してください。
 
 ```
-supabase/migrations/
-├── 20260518_init.sql                        # users・messages テーブル、RLS
-├── 20260518_add_stripe_customer_id.sql      # stripe_customer_id 追加
-├── 20260518_add_token_usage.sql             # token_usage テーブル
-├── 20260519_add_children.sql                # children テーブル（子ども情報）
-├── 20260519_add_child_memory.sql            # children.memory 列追加
-├── 20260519_fix_rls_plan_protection.sql     # plan列の直接書き換え禁止
-├── 20260520_multi_children.sql              # ★ user_idのunique制約削除・active_child_id追加
-├── 20260520_children_plan_limit.sql         # Free/LiteはDB側でも子ども1人に制限
-└── 20260520_add_child_id_to_messages.sql    # messages に child_id 追加（子どもごとに履歴を分離）
+supabase/migrations/schema.sql
 ```
 
-> ⚠️ `20260520_multi_children.sql` を実行しないと、Proプランでも2人目の子どもが登録できません。
+全テーブル・RLS・トリガーが一括で作成されます。
 
 ### 4. Supabase 認証の設定
 
