@@ -28,7 +28,7 @@ export default function Home() {
   const [showChildPicker, setShowChildPicker] = useState(false);
   const { userId } = useAuthUserId();
   const { childId, childName, childBirthday, childChecked, allChildren, switchChild } = useChildRedirect(userId);
-  const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
+  const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan(userId);
   const historyDays = getPlan(planId).historyDays;
   const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
   const [loading, setLoading] = useState(false);
@@ -253,6 +253,7 @@ export default function Home() {
           )}
           <Link
             href="/account"
+            prefetch
             className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
           >
             マイページ

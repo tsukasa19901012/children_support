@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
 
-type Child = {
+export type ChildRow = {
   id: string;
   name: string;
   birthday: string;
@@ -14,6 +14,9 @@ type Child = {
 
 type Props = {
   isPro: boolean;
+  userId: string;
+  initialChildren: ChildRow[];
+  initialActiveChildId: string | null;
 };
 
 const GENDER_LABEL: Record<string, string> = {
@@ -22,47 +25,33 @@ const GENDER_LABEL: Record<string, string> = {
   other: "未回答",
 };
 
-export function ChildManager({ isPro }: Props) {
+export function ChildManager({
+  isPro,
+  userId,
+  initialChildren,
+  initialActiveChildId,
+}: Props) {
   const router = useRouter();
-  const [children, setChildren] = useState<Child[]>([]);
-  const [activeChildId, setActiveChildId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [children] = useState(initialChildren);
+  const [activeChildId, setActiveChildId] = useState(initialActiveChildId);
   const [switching, setSwitching] = useState<string | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-
-      const [{ data: childrenData }, { data: userData }] = await Promise.all([
-        supabase.from("children").select("id, name, birthday, gender").eq("user_id", user.id).order("created_at"),
-        supabase.from("users").select("active_child_id").eq("id", user.id).single(),
-      ]);
-
-      setChildren(childrenData ?? []);
-      setActiveChildId(userData?.active_child_id ?? childrenData?.[0]?.id ?? null);
-      setLoading(false);
-    });
-  }, []);
 
   const handleSwitch = async (childId: string) => {
     setSwitching(childId);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("users").update({ active_child_id: childId }).eq("id", user.id);
-    setActiveChildId(childId);
+    const { error } = await supabase
+      .from("users")
+      .update({ active_child_id: childId })
+      .eq("id", userId);
+    if (!error) setActiveChildId(childId);
     setSwitching(null);
   };
-
-  if (loading) return <div className="h-16 animate-pulse bg-gray-100 rounded-2xl" />;
 
   const hasMultiple = children.length > 1;
   const needsSelection = !isPro && hasMultiple;
 
   return (
     <div className="space-y-3">
-      {/* 非Proで複数の子どもがいる場合のバナー */}
       {needsSelection && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs text-amber-700 font-medium mb-0.5">相談するお子さんを選択してください</p>
@@ -75,7 +64,8 @@ export function ChildManager({ isPro }: Props) {
       {children.map((child) => {
         const isActive = child.id === activeChildId;
         return (
-          <div key={child.id}
+          <div
+            key={child.id}
             className={`flex items-center justify-between rounded-2xl border px-4 py-3 transition-colors ${
               isActive ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-white"
             }`}
@@ -96,7 +86,6 @@ export function ChildManager({ isPro }: Props) {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* 編集ボタン（全プラン） */}
               <button
                 type="button"
                 onClick={() => router.push(`/onboarding?mode=edit&childId=${child.id}`)}
@@ -105,7 +94,6 @@ export function ChildManager({ isPro }: Props) {
                 編集
               </button>
 
-              {/* 切り替えボタン（全プラン・非アクティブのみ） */}
               {!isActive && (
                 <button
                   type="button"
@@ -127,7 +115,6 @@ export function ChildManager({ isPro }: Props) {
         );
       })}
 
-      {/* Proプランのみ追加ボタン */}
       {isPro && (
         <button
           type="button"
@@ -139,7 +126,6 @@ export function ChildManager({ isPro }: Props) {
         </button>
       )}
 
-      {/* 非Proで複数の子どもがいる場合：アップグレード案内 */}
       {needsSelection && (
         <p className="text-xs text-center text-gray-400 pt-1">
           Proプランにアップグレードするとすべてのお子さんに同時対応できます

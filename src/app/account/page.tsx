@@ -3,15 +3,7 @@ import Link from "next/link";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "../../lib/supabase-server";
 import { getPlan } from "../../features/billing/plans";
 import type { PlanId } from "../../features/billing/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { getJSTDayStartISO } from "../../lib/date";
 import { AccountActions } from "./AccountActions";
 import { ChildManager } from "./ChildManager";
 
@@ -24,20 +16,34 @@ const PLAN_COLOR: Record<PlanId, string> = {
 async function fetchAccountData(userId: string) {
   const db = createServiceSupabaseClient();
 
-  const [userRes, usageRes] = await Promise.all([
-    db.from("users").select("plan, stripe_customer_id").eq("id", userId).single(),
+  const [userRes, usageRes, childrenRes] = await Promise.all([
+    db.from("users").select("plan, active_child_id").eq("id", userId).single(),
     db
       .from("messages")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("role", "user")
-      .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+      .gte("created_at", getJSTDayStartISO()),
+    db
+      .from("children")
+      .select("id, name, birthday, gender")
+      .eq("user_id", userId)
+      .order("created_at"),
   ]);
 
   const planId = (userRes.data?.plan as PlanId | null) ?? "free";
-  const todayUsage = usageRes.count ?? 0;
+  const children = childrenRes.data ?? [];
+  const activeChildId =
+    (userRes.data?.active_child_id as string | null) ??
+    children[0]?.id ??
+    null;
 
-  return { planId, todayUsage };
+  return {
+    planId,
+    todayUsage: usageRes.count ?? 0,
+    children,
+    activeChildId,
+  };
 }
 
 export default async function AccountPage() {
@@ -45,7 +51,7 @@ export default async function AccountPage() {
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) redirect("/login");
 
-  const { planId, todayUsage } = await fetchAccountData(user.id);
+  const { planId, todayUsage, children, activeChildId } = await fetchAccountData(user.id);
   const plan = getPlan(planId);
   const isFree = planId === "free";
   const remaining = isFree && plan.dailyLimit !== null
@@ -54,114 +60,95 @@ export default async function AccountPage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
           ← チャットに戻る
         </Link>
         <span className="font-bold text-sm text-gray-800">マイページ</span>
-        <div className="w-16" /> {/* spacer */}
+        <div className="w-16" />
       </header>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-4">
 
-        {/* プランカード */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>現在のプラン</CardTitle>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${PLAN_COLOR[planId]}`}>
-                {plan.name.toUpperCase()}
+        {/* プラン */}
+        <section className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-800">現在のプラン</h2>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${PLAN_COLOR[planId]}`}>
+              {plan.name.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            {isFree ? "無料プランをご利用中です" : "有料プランをご利用中です"}
+          </p>
+          <ul className="space-y-1.5">
+            {plan.features.map((f) => (
+              <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                <span className="text-green-500 font-bold">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 利用状況 */}
+        <section className="bg-white rounded-xl border border-gray-100 p-4">
+          <h2 className="text-sm font-bold text-gray-800 mb-3">本日の利用状況</h2>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">送信回数</span>
+            <span className="font-semibold text-gray-800">
+              {todayUsage}
+              {plan.dailyLimit !== null ? (
+                <span className="text-gray-400 font-normal"> / {plan.dailyLimit}回</span>
+              ) : (
+                <span className="text-gray-400 font-normal"> 回（無制限）</span>
+              )}
+            </span>
+          </div>
+          {isFree && remaining !== null && (
+            <div className="flex items-center justify-between text-sm mt-3 pt-3 border-t border-gray-100">
+              <span className="text-gray-500">残り回数</span>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                remaining === 0 ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-600"
+              }`}>
+                {remaining === 0 ? "上限到達" : `あと ${remaining} 回`}
               </span>
             </div>
-            <CardDescription>
-              {isFree ? "無料プランをご利用中です" : "有料プランをご利用中です"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-1.5">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                  <span className="text-green-500 font-bold text-base leading-none">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* 利用状況カード */}
-        <Card>
-          <CardHeader>
-            <CardTitle>本日の利用状況</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">送信回数</span>
-              <span className="font-semibold text-sm">
-                {todayUsage}
-                {plan.dailyLimit !== null && (
-                  <span className="text-muted-foreground font-normal"> / {plan.dailyLimit}回</span>
-                )}
-                {plan.dailyLimit === null && (
-                  <span className="text-muted-foreground font-normal"> 回（無制限）</span>
-                )}
+          )}
+          {!isFree && (
+            <div className="flex items-center justify-between text-sm mt-3 pt-3 border-t border-gray-100">
+              <span className="text-gray-500">制限</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                無制限
               </span>
             </div>
+          )}
+        </section>
 
-            {isFree && remaining !== null && (
-              <>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">残り回数</span>
-                  <Badge variant={remaining === 0 ? "destructive" : "secondary"}>
-                    {remaining === 0 ? "上限到達" : `あと ${remaining} 回`}
-                  </Badge>
-                </div>
-              </>
-            )}
+        {/* アカウント */}
+        <section className="bg-white rounded-xl border border-gray-100 p-4">
+          <h2 className="text-sm font-bold text-gray-800 mb-3">アカウント</h2>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">メールアドレス</span>
+            <span className="text-gray-700 truncate max-w-[180px]">{user.email}</span>
+          </div>
+        </section>
 
-            {!isFree && (
-              <>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">制限</span>
-                  <Badge variant="secondary">無制限</Badge>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* 子ども情報 */}
+        <section className="bg-white rounded-xl border border-gray-100 p-4">
+          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さんの情報</h2>
+          {planId === "pro" && (
+            <p className="text-xs text-gray-400 mb-3">Proプランは複数のお子さんを登録できます</p>
+          )}
+          <ChildManager
+            isPro={planId === "pro"}
+            userId={user.id}
+            initialChildren={children}
+            initialActiveChildId={activeChildId}
+          />
+        </section>
 
-        {/* アカウント情報カード */}
-        <Card>
-          <CardHeader>
-            <CardTitle>アカウント</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">メールアドレス</span>
-              <span className="text-sm text-gray-700 truncate max-w-[180px]">{user.email}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 子ども情報カード */}
-        <Card>
-          <CardHeader>
-            <CardTitle>お子さんの情報</CardTitle>
-            {planId === "pro" && (
-              <CardDescription>Proプランは複数のお子さんを登録できます</CardDescription>
-            )}
-          </CardHeader>
-          <CardContent>
-            <ChildManager isPro={planId === "pro"} />
-          </CardContent>
-        </Card>
-
-        {/* アクション（クライアントコンポーネント） */}
         <AccountActions planId={planId} />
-
       </div>
     </div>
   );

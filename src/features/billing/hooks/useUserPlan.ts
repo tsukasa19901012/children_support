@@ -34,26 +34,26 @@ const saveUsage = (usage: StoredUsage): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(usage));
 };
 
-export const useUserPlan = (): UserPlan => {
+export const useUserPlan = (userId: string | null): UserPlan => {
   const [planId, setPlanId] = useState<PlanId>("free");
   const [usedToday, setUsedToday] = useState(0);
 
   useEffect(() => {
-    // ローカルの使用回数をロード
     setUsedToday(loadUsage().count);
-
-    // Supabase からプランを取得
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: userData } = await supabase
-        .from("users")
-        .select("plan")
-        .eq("id", data.user.id)
-        .single();
-      if (userData?.plan) setPlanId(userData.plan as PlanId);
-    });
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    supabase
+      .from("users")
+      .select("plan")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => {
+        if (data?.plan) setPlanId(data.plan as PlanId);
+      });
+  }, [userId]);
 
   const recordUsage = useCallback(() => {
     setUsedToday((prev) => {
