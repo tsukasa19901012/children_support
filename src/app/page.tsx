@@ -8,13 +8,14 @@ import { useChatHistory } from "../features/chat/hooks/useChatHistory";
 import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
+import { formatAge, buildChildContext } from "../lib/childAge";
 
 type Message = ChatMessage;
 
 export default function Home() {
   const [input, setInput] = useState("");
   const { userId } = useAuthUserId();
-  const { childName, childAge, childChecked } = useChildRedirect(userId);
+  const { childName, childBirthday, childChecked } = useChildRedirect(userId);
   const { messages, setMessages, historyLoading } = useChatHistory(userId);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -46,8 +47,9 @@ export default function Home() {
             role: m.role === "user" ? "user" : "assistant",
             content: m.text,
           })),
-          childName: childName ?? undefined,
-          childAge: childAge ?? undefined,
+          childContext: childName && childBirthday
+            ? buildChildContext(childName, childBirthday)
+            : undefined,
         }),
       });
 
@@ -86,7 +88,9 @@ export default function Home() {
       {/* Header */}
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
         <span className="font-bold text-base">
-          {childName ? `${childName}ちゃんの育児相談` : "育児AIチャット"}
+          {childName && childBirthday
+            ? `${childName}（${formatAge(childBirthday)}）`
+            : "育児AIチャット"}
         </span>
         <div className="flex items-center gap-2">
           <PlanBadge planId={planId} remaining={remaining} />

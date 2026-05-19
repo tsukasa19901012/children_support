@@ -6,7 +6,7 @@ create table if not exists public.children (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.users(id) on delete cascade,
   name       text not null,
-  age        int  not null check (age between 1 and 12),
+  birthday   date not null,
   gender     text check (gender in ('male', 'female', 'other')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

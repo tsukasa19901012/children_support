@@ -15,8 +15,7 @@ type Message = {
 
 type RequestBody = {
   messages: Message[];
-  childName?: string;
-  childAge?: number;
+  childContext?: string;
 };
 
 const ALLOWED_ROLES = new Set<string>(["user", "assistant"]);
@@ -38,9 +37,9 @@ function getJSTDayStart(): Date {
 const BASE_SYSTEM_PROMPT =
   "あなたは育児専門の温かいAIアシスタントです。保護者の不安を受け止め、まず共感を示してから、簡潔で実用的なアドバイスをしてください。医療診断は行わず、必要な場合は専門家への相談を促してください。";
 
-function buildSystemPrompt(childName?: string, childAge?: number): string {
-  if (!childName || !childAge) return BASE_SYSTEM_PROMPT;
-  return `${BASE_SYSTEM_PROMPT}\n\n相談者のお子さんの情報：名前は「${childName}」、${childAge}歳です。回答時は子どもの名前と年齢を考慮してください。`;
+function buildSystemPrompt(childContext?: string): string {
+  if (!childContext) return BASE_SYSTEM_PROMPT;
+  return `${BASE_SYSTEM_PROMPT}\n\n【相談者のお子さん】${childContext}回答時は子どもの名前・月齢・年齢を考慮してください。`;
 }
 
 const UPGRADE_MESSAGE =
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
 
     // 2. リクエスト検証
     const body: RequestBody = await request.json();
-    const { messages, childName, childAge } = body;
+    const { messages, childContext } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -225,7 +224,7 @@ export async function POST(request: NextRequest) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const MODEL = "gpt-4o-mini";
-    const systemPrompt = buildSystemPrompt(childName, childAge);
+    const systemPrompt = buildSystemPrompt(childContext);
     const completion = await openai.chat.completions.create({
       model: MODEL,
       messages: [
