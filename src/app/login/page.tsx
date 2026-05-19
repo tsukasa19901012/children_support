@@ -6,6 +6,20 @@ import { createClient } from "../../lib/supabase-browser";
 
 type Status = "idle" | "loading" | "sent" | "error";
 
+function toJapaneseError(message: string): string {
+  if (/rate limit/i.test(message))
+    return "メールの送信制限に達しました。しばらく時間をおいてから再試行してください。";
+  if (/invalid.*email|email.*invalid/i.test(message))
+    return "メールアドレスの形式が正しくありません。";
+  if (/expired|invalid.*link|link.*invalid/i.test(message))
+    return "リンクが無効か期限切れです。再度メールアドレスを入力して送り直してください。";
+  if (/already registered/i.test(message))
+    return "このメールアドレスはすでに登録されています。";
+  if (/network|fetch/i.test(message))
+    return "通信エラーが発生しました。ネットワークを確認してください。";
+  return "エラーが発生しました。しばらく時間をおいてから再試行してください。";
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const hasAuthError = searchParams.get("error") === "auth_failed";
@@ -34,7 +48,7 @@ function LoginForm() {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(toJapaneseError(error.message));
       setStatus("error");
     } else {
       setStatus("sent");
