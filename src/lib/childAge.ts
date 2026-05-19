@@ -5,6 +5,9 @@ export function calcAge(birthday: string): { years: number; months: number } {
   const birth = new Date(birthday);
   const now = new Date();
 
+  // 未来の誕生日は 0歳0ヶ月として扱う
+  if (birth > now) return { years: 0, months: 0 };
+
   let years = now.getFullYear() - birth.getFullYear();
   let months = now.getMonth() - birth.getMonth();
 

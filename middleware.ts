@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 未認証かつ保護ルートへのアクセス → /login にリダイレクト
-  if (!user && pathname !== "/login" && pathname !== "/onboarding" && !pathname.startsWith("/auth")) {
+  if (!user && pathname !== "/login" && !pathname.startsWith("/auth")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

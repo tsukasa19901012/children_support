@@ -16,11 +16,24 @@ const GENDER_OPTIONS: { value: Gender; label: string; emoji: string }[] = [
 
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
+const CURRENT_MONTH = NOW.getMonth() + 1;
+const CURRENT_DAY = NOW.getDate();
 const YEARS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i); // 今年〜7年前（0〜6歳）
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
+}
+
+function clampDay(year: number, month: number, day: number) {
+  return Math.min(day, daysInMonth(year, month));
+}
+
+function isFutureDate(year: number, month: number, day: number) {
+  if (year > CURRENT_YEAR) return true;
+  if (year === CURRENT_YEAR && month > CURRENT_MONTH) return true;
+  if (year === CURRENT_YEAR && month === CURRENT_MONTH && day > CURRENT_DAY) return true;
+  return false;
 }
 
 export default function OnboardingPage() {
@@ -36,8 +49,10 @@ export default function OnboardingPage() {
 
   const days = useMemo(() => Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1), [year, month]);
 
-  const birthday = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  const agePreview = formatAge(birthday);
+  const safeDay = clampDay(year, month, day);
+  const birthday = `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
+  const isFuture = isFutureDate(year, month, safeDay);
+  const agePreview = isFuture ? "未来の日付です" : formatAge(birthday);
 
   const handleNameNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +159,11 @@ export default function OnboardingPage() {
                 <label className="text-xs text-gray-400 block mb-1 text-center">年</label>
                 <select
                   value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
+                  onChange={(e) => {
+                    const y = Number(e.target.value);
+                    setYear(y);
+                    setDay(clampDay(y, month, day));
+                  }}
                   className="w-full border border-gray-300 rounded-xl px-2 py-3 text-sm outline-none focus:border-blue-400 text-center"
                 >
                   {YEARS.map((y) => (
@@ -160,7 +179,7 @@ export default function OnboardingPage() {
                   onChange={(e) => {
                     const m = Number(e.target.value);
                     setMonth(m);
-                    if (day > daysInMonth(year, m)) setDay(1);
+                    setDay(clampDay(year, m, day));
                   }}
                   className="w-full border border-gray-300 rounded-xl px-1 py-3 text-sm outline-none focus:border-blue-400 text-center"
                 >
@@ -173,7 +192,7 @@ export default function OnboardingPage() {
               <div className="w-16">
                 <label className="text-xs text-gray-400 block mb-1 text-center">日</label>
                 <select
-                  value={day}
+                  value={safeDay}
                   onChange={(e) => setDay(Number(e.target.value))}
                   className="w-full border border-gray-300 rounded-xl px-1 py-3 text-sm outline-none focus:border-blue-400 text-center"
                 >
@@ -185,15 +204,16 @@ export default function OnboardingPage() {
             </div>
 
             {/* 年齢プレビュー */}
-            <div className="bg-blue-50 rounded-xl px-4 py-3 text-center mb-5">
-              <p className="text-xs text-blue-400 mb-0.5">現在の年齢</p>
-              <p className="text-lg font-bold text-blue-600">{agePreview}</p>
+            <div className={`rounded-xl px-4 py-3 text-center mb-5 ${isFuture ? "bg-red-50" : "bg-blue-50"}`}>
+              <p className={`text-xs mb-0.5 ${isFuture ? "text-red-400" : "text-blue-400"}`}>現在の年齢</p>
+              <p className={`text-lg font-bold ${isFuture ? "text-red-500" : "text-blue-600"}`}>{agePreview}</p>
             </div>
 
             <button
               type="button"
               onClick={handleBirthdayNext}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 rounded-xl text-sm transition-colors"
+              disabled={isFuture}
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
             >
               次へ
             </button>
