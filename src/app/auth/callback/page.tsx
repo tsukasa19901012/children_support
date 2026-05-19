@@ -12,12 +12,12 @@ export default function AuthCallbackPage() {
 
     // Implicit フロー: ブラウザクライアントがハッシュから自動的にセッションを取得する
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
         subscription.unsubscribe();
         router.replace("/");
         return;
       }
-      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+      if (event === "SIGNED_OUT") {
         subscription.unsubscribe();
         router.replace("/login?error=auth_failed");
       }
