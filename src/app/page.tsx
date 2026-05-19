@@ -7,12 +7,14 @@ import { UpgradeModal } from "../features/billing/components/UpgradeModal";
 import { useChatHistory } from "../features/chat/hooks/useChatHistory";
 import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
+import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 
 type Message = ChatMessage;
 
 export default function Home() {
   const [input, setInput] = useState("");
   const { userId } = useAuthUserId();
+  const { childName, childAge, childChecked } = useChildRedirect(userId);
   const { messages, setMessages, historyLoading } = useChatHistory(userId);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -44,6 +46,8 @@ export default function Home() {
             role: m.role === "user" ? "user" : "assistant",
             content: m.text,
           })),
+          childName: childName ?? undefined,
+          childAge: childAge ?? undefined,
         }),
       });
 
@@ -65,11 +69,25 @@ export default function Home() {
   const isFree = planId === "free";
   const inputDisabled = loading || isLimited;
 
+  // 子ども情報の確認が終わるまでローディング
+  if (userId && !childChecked) {
+    return (
+      <div className="flex items-center justify-center h-dvh bg-gray-50">
+        <div className="text-center">
+          <div className="text-3xl mb-3">👶</div>
+          <p className="text-gray-400 text-sm">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-dvh bg-gray-100">
       {/* Header */}
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <span className="font-bold text-base">育児AIチャット</span>
+        <span className="font-bold text-base">
+          {childName ? `${childName}ちゃんの育児相談` : "育児AIチャット"}
+        </span>
         <div className="flex items-center gap-2">
           <PlanBadge planId={planId} remaining={remaining} />
           {isFree && (
