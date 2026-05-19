@@ -126,7 +126,17 @@ function OnboardingForm() {
         .insert({ user_id: user.id, name: name.trim(), birthday, gender: selectedGender })
         .select("id")
         .single();
-      if (err || !child) { setError("保存に失敗しました。"); setSaving(false); return; }
+      if (err || !child) {
+        console.error("[onboarding] 子ども登録失敗:", err?.message);
+        // DBトリガーによるプラン制限エラー
+        if (err?.message?.includes("Pro プランへのアップグレード")) {
+          setError("複数の子どもを登録するにはProプランへのアップグレードが必要です。");
+        } else {
+          setError(`保存に失敗しました。${err?.message ?? ""}`);
+        }
+        setSaving(false);
+        return;
+      }
 
       // 初回 or 追加 → アクティブ子どもに設定
       await supabase.from("users").update({ active_child_id: child.id }).eq("id", user.id);
