@@ -27,6 +27,7 @@ type UseChatHistoryResult = {
  */
 export const useChatHistory = (
   userId: string | null,
+  childId: string | null,
   historyDays: number | null = null
 ): UseChatHistoryResult => {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
@@ -34,7 +35,12 @@ export const useChatHistory = (
   const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
-    if (userId === null) return;
+    // userId と childId が両方確定してから取得する
+    if (userId === null || childId === null) return;
+
+    setMessages([INITIAL_MESSAGE]);
+    setHistoryLoading(true);
+    setHistoryError(false);
 
     const load = async () => {
       try {
@@ -43,6 +49,7 @@ export const useChatHistory = (
           .from("messages")
           .select("role, content")
           .eq("user_id", userId)
+          .eq("child_id", childId)   // 子どもごとに履歴を分ける
           .order("created_at", { ascending: true });
 
         if (historyDays !== null) {
@@ -74,7 +81,7 @@ export const useChatHistory = (
     };
 
     load();
-  }, [userId, historyDays]);
+  }, [userId, childId, historyDays]);
 
   return { messages, setMessages, historyLoading, historyError };
 };

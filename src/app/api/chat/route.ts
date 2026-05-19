@@ -157,13 +157,14 @@ async function fetchTodayUsage(userId: string): Promise<number> {
 async function saveMessages(
   userId: string,
   userContent: string,
-  assistantContent: string
+  assistantContent: string,
+  childId?: string | null
 ): Promise<void> {
   try {
     const db = createServiceSupabaseClient();
     const { error } = await db.from("messages").insert([
-      { user_id: userId, role: "user",      content: userContent },
-      { user_id: userId, role: "assistant", content: assistantContent },
+      { user_id: userId, child_id: childId ?? null, role: "user",      content: userContent },
+      { user_id: userId, child_id: childId ?? null, role: "assistant", content: assistantContent },
     ]);
     if (error) {
       console.warn("[/api/chat] messages保存失敗（非致命的）:", error.message);
@@ -257,10 +258,10 @@ export async function POST(request: NextRequest) {
     let insertedMessageId: string | null = null;
 
     if (plan.dailyLimit !== null) {
-      // ユーザーメッセージを先にDB挿入
+      // ユーザーメッセージを先にDB挿入（child_id付き）
       const { data: inserted, error: insertError } = await db
         .from("messages")
-        .insert({ user_id: userId, role: "user", content: lastUserMessage.content })
+        .insert({ user_id: userId, child_id: childId ?? null, role: "user", content: lastUserMessage.content })
         .select("id")
         .single();
 
@@ -345,13 +346,13 @@ export async function POST(request: NextRequest) {
     ];
 
     if (insertedMessageId) {
-      // 事前挿入済みのためアシスタントメッセージのみ追加
+      // 事前挿入済みのためアシスタントメッセージのみ追加（child_id付き）
       savePromises.push(
         (async () => {
           try {
             const { error } = await db
               .from("messages")
-              .insert({ user_id: userId, role: "assistant", content: aiMessage });
+              .insert({ user_id: userId, child_id: childId ?? null, role: "assistant", content: aiMessage });
             if (error) console.warn("[/api/chat] assistantメッセージ保存失敗:", error.message);
           } catch (err) {
             console.warn("[/api/chat] assistantメッセージ保存例外:", err);
@@ -359,7 +360,7 @@ export async function POST(request: NextRequest) {
         })()
       );
     } else {
-      savePromises.push(saveMessages(userId, lastUserMessage.content, aiMessage));
+      savePromises.push(saveMessages(userId, lastUserMessage.content, aiMessage, childId));
     }
 
     await Promise.all(savePromises);

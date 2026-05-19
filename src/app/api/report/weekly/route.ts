@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
       const activeChildId = userData?.active_child_id as string | null;
 
       const childQuery = activeChildId
-        ? db.from("children").select("name, birthday, memory").eq("id", activeChildId).eq("user_id", user.id)
-        : db.from("children").select("name, birthday, memory").eq("user_id", user.id).order("created_at").limit(1);
+        ? db.from("children").select("id, name, birthday, memory").eq("id", activeChildId).eq("user_id", user.id)
+        : db.from("children").select("id, name, birthday, memory").eq("user_id", user.id).order("created_at").limit(1);
 
       const { data: child } = await childQuery.maybeSingle();
 
@@ -99,11 +99,12 @@ export async function POST(request: NextRequest) {
 
       const ageText = formatAge(child.birthday);
 
-      // 今週のメッセージを取得（最大50件）
+      // 今週の子ども固有のメッセージを取得（最大50件）
       const { data: weekMessages } = await db
         .from("messages")
         .select("role, content")
         .eq("user_id", user.id)
+        .eq("child_id", child.id)   // 子ども単位でフィルタ
         .gte("created_at", oneWeekAgo)
         .order("created_at", { ascending: true })
         .limit(50);

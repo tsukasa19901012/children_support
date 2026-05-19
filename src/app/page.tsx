@@ -20,7 +20,7 @@ export default function Home() {
   const { childId, childName, childBirthday, childChecked } = useChildRedirect(userId);
   const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
   const historyDays = getPlan(planId).historyDays;
-  const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, historyDays);
+  const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
