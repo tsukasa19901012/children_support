@@ -4,6 +4,8 @@ import "./globals.css";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   // キーボードはオーバーレイ。入力欄は fixed + visualViewport で追従
   interactiveWidget: "overlays-content",

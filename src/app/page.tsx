@@ -372,10 +372,11 @@ export default function Home() {
             </button>
           </div>
         )}
-        <footer className="px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
+        <footer className="px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end touch-manipulation">
           <textarea
+            data-chat-input
             className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
-            style={{ fontSize: 16 }}
+            style={{ fontSize: "16px" }}
             rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
