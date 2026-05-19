@@ -12,8 +12,15 @@ import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
 import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
+import { DeleteConfirmDialog } from "../features/chat/components/DeleteConfirmDialog";
+import { deleteMessagesFromDb } from "../features/chat/lib/deleteMessages";
 
 type Message = ChatMessage;
+
+type DeleteTarget = {
+  userIndex: number;
+  ids: string[];
+};
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -25,6 +32,8 @@ export default function Home() {
   const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -70,9 +79,27 @@ export default function Home() {
 
       if (!res.ok) throw new Error(`status: ${res.status}`);
 
-      const data: { message: string } = await res.json();
+      const data: {
+        message: string;
+        userMessageId?: string | null;
+        assistantMessageId?: string | null;
+      } = await res.json();
       recordUsage(); // 成功時のみカウントを増やす
-      setMessages((prev) => [...prev, { role: "ai", text: data.message }]);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastUserIdx = updated.length - 1;
+        if (updated[lastUserIdx]?.role === "user" && data.userMessageId) {
+          updated[lastUserIdx] = { ...updated[lastUserIdx], id: data.userMessageId };
+        }
+        return [
+          ...updated,
+          {
+            role: "ai" as const,
+            text: data.message,
+            id: data.assistantMessageId ?? undefined,
+          },
+        ];
+      });
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -81,6 +108,41 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  /** ユーザーメッセージと直後のAI回答を削除対象として選ぶ */
+  const requestDelete = (userIndex: number) => {
+    const userMsg = messages[userIndex];
+    if (userMsg.role !== "user" || !userMsg.id) return;
+
+    const ids = [userMsg.id];
+    const next = messages[userIndex + 1];
+    if (next?.role === "ai" && next.id) ids.push(next.id);
+
+    setDeleteTarget({ userIndex, ids });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const errMsg = await deleteMessagesFromDb(deleteTarget.ids);
+    if (errMsg) {
+      setDeleting(false);
+      alert("削除に失敗しました。もう一度お試しください。");
+      return;
+    }
+
+    setMessages((prev) => {
+      const removeCount =
+        prev[deleteTarget.userIndex + 1]?.role === "ai" ? 2 : 1;
+      return prev.filter((_, i) => {
+        if (i < deleteTarget.userIndex) return true;
+        if (i >= deleteTarget.userIndex + removeCount) return true;
+        return false;
+      });
+    });
+    setDeleting(false);
+    setDeleteTarget(null);
   };
 
   const isLimited = !canSend;
@@ -201,38 +263,52 @@ export default function Home() {
       <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((m, i) => (
           <div
-            key={`${m.role}-${i}`}
+            key={m.id ?? `${m.role}-${i}`}
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed ${
-                m.role === "user"
-                  ? "bg-blue-500 text-white rounded-br-none"
-                  : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
+              className={`max-w-[75%] flex flex-col gap-1 ${
+                m.role === "user" ? "items-end" : "items-start"
               }`}
             >
-              {m.role === "user" ? (
-                <span className="whitespace-pre-wrap">{m.text}</span>
-              ) : (
-                <ReactMarkdown
-                  components={{
-                    p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                    strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                    em: ({ children }) => <em className="italic">{children}</em>,
-                    ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
-                    li: ({ children }) => <li>{children}</li>,
-                    // javascript: スキームのリンクを無害化
-                    a: ({ href, children }) => {
-                      const safe = href?.startsWith("http") || href?.startsWith("https");
-                      return safe
-                        ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{children}</a>
-                        : <span>{children}</span>;
-                    },
-                  }}
+              <div
+                className={`px-4 py-2 rounded-2xl text-sm leading-relaxed ${
+                  m.role === "user"
+                    ? "bg-blue-500 text-white rounded-br-none"
+                    : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
+                }`}
+              >
+                {m.role === "user" ? (
+                  <span className="whitespace-pre-wrap">{m.text}</span>
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
+                      li: ({ children }) => <li>{children}</li>,
+                      a: ({ href, children }) => {
+                        const safe = href?.startsWith("http") || href?.startsWith("https");
+                        return safe
+                          ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{children}</a>
+                          : <span>{children}</span>;
+                      },
+                    }}
+                  >
+                    {m.text}
+                  </ReactMarkdown>
+                )}
+              </div>
+              {m.role === "user" && m.id && !loading && (
+                <button
+                  type="button"
+                  onClick={() => requestDelete(i)}
+                  className="text-[11px] text-gray-400 hover:text-red-500 px-1 py-0.5 transition-colors"
                 >
-                  {m.text}
-                </ReactMarkdown>
+                  削除
+                </button>
               )}
             </div>
           </div>
@@ -296,6 +372,14 @@ export default function Home() {
 
       {/* Upgrade modal */}
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+
+      {deleteTarget && (
+        <DeleteConfirmDialog
+          onConfirm={confirmDelete}
+          onCancel={() => !deleting && setDeleteTarget(null)}
+          deleting={deleting}
+        />
+      )}
     </div>
   );
 }

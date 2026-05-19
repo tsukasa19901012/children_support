@@ -6,6 +6,8 @@ import { createClient } from "../../../lib/supabase-browser";
 export type ChatMessage = {
   role: "user" | "ai";
   text: string;
+  /** DB保存済みメッセージのID（削除可能）。初回挨拶など未保存は undefined */
+  id?: string;
 };
 
 const INITIAL_MESSAGE: ChatMessage = {
@@ -47,7 +49,7 @@ export const useChatHistory = (
         const supabase = createClient();
         let query = supabase
           .from("messages")
-          .select("role, content")
+          .select("id, role, content")
           .eq("user_id", userId)
           .eq("child_id", childId)   // 子どもごとに履歴を分ける
           .order("created_at", { ascending: true });
@@ -67,6 +69,7 @@ export const useChatHistory = (
 
         if (data && data.length > 0) {
           const history: ChatMessage[] = data.map((row) => ({
+            id: row.id,
             role: row.role === "assistant" ? "ai" : ("user" as const),
             text: row.content,
           }));

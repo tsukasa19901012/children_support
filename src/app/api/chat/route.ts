@@ -153,24 +153,32 @@ async function fetchTodayUsage(userId: string): Promise<number> {
   return count ?? 0;
 }
 
+type SavedMessageIds = { userMessageId: string; assistantMessageId: string };
+
 /** メッセージをDBに保存する（失敗は非致命的） */
 async function saveMessages(
   userId: string,
   userContent: string,
   assistantContent: string,
   childId?: string | null
-): Promise<void> {
+): Promise<SavedMessageIds | null> {
   try {
     const db = createServiceSupabaseClient();
-    const { error } = await db.from("messages").insert([
+    const { data, error } = await db.from("messages").insert([
       { user_id: userId, child_id: childId ?? null, role: "user",      content: userContent },
       { user_id: userId, child_id: childId ?? null, role: "assistant", content: assistantContent },
-    ]);
-    if (error) {
-      console.warn("[/api/chat] messages保存失敗（非致命的）:", error.message);
+    ]).select("id, role");
+    if (error || !data || data.length < 2) {
+      console.warn("[/api/chat] messages保存失敗（非致命的）:", error?.message);
+      return null;
     }
+    const userRow = data.find((r) => r.role === "user");
+    const assistantRow = data.find((r) => r.role === "assistant");
+    if (!userRow || !assistantRow) return null;
+    return { userMessageId: userRow.id, assistantMessageId: assistantRow.id };
   } catch (err) {
     console.warn("[/api/chat] messages保存例外（非致命的）:", err);
+    return null;
   }
 }
 
@@ -333,39 +341,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 8. アシスタントメッセージ保存 & トークン使用量記録（並列・非致命的）
-    // free プラン以外はここでユーザーメッセージも保存する
-    const savePromises: Promise<void>[] = [
-      usage
-        ? saveTokenUsage(userId, MODEL, {
-            prompt_tokens:     usage.prompt_tokens,
-            completion_tokens: usage.completion_tokens,
-            total_tokens:      usage.total_tokens,
-          })
-        : Promise.resolve(),
-    ];
+    // 8. アシスタントメッセージ保存 & トークン使用量記録
+    let savedUserMessageId: string | null = insertedMessageId;
+    let savedAssistantMessageId: string | null = null;
+
+    const tokenSavePromise = usage
+      ? saveTokenUsage(userId, MODEL, {
+          prompt_tokens:     usage.prompt_tokens,
+          completion_tokens: usage.completion_tokens,
+          total_tokens:      usage.total_tokens,
+        })
+      : Promise.resolve();
 
     if (insertedMessageId) {
-      // 事前挿入済みのためアシスタントメッセージのみ追加（child_id付き）
-      savePromises.push(
-        (async () => {
-          try {
-            const { error } = await db
-              .from("messages")
-              .insert({ user_id: userId, child_id: childId ?? null, role: "assistant", content: aiMessage });
-            if (error) console.warn("[/api/chat] assistantメッセージ保存失敗:", error.message);
-          } catch (err) {
-            console.warn("[/api/chat] assistantメッセージ保存例外:", err);
-          }
-        })()
-      );
+      // 事前挿入済みのためアシスタントメッセージのみ追加
+      try {
+        const { data: assistantRow, error } = await db
+          .from("messages")
+          .insert({ user_id: userId, child_id: childId ?? null, role: "assistant", content: aiMessage })
+          .select("id")
+          .single();
+        if (error) console.warn("[/api/chat] assistantメッセージ保存失敗:", error.message);
+        else savedAssistantMessageId = assistantRow?.id ?? null;
+      } catch (err) {
+        console.warn("[/api/chat] assistantメッセージ保存例外:", err);
+      }
     } else {
-      savePromises.push(saveMessages(userId, lastUserMessage.content, aiMessage, childId));
+      const saved = await saveMessages(userId, lastUserMessage.content, aiMessage, childId);
+      if (saved) {
+        savedUserMessageId = saved.userMessageId;
+        savedAssistantMessageId = saved.assistantMessageId;
+      }
     }
 
-    await Promise.all(savePromises);
+    await tokenSavePromise;
 
-    return NextResponse.json({ message: aiMessage });
+    return NextResponse.json({
+      message: aiMessage,
+      userMessageId: savedUserMessageId,
+      assistantMessageId: savedAssistantMessageId,
+    });
   } catch (error) {
     console.error("[/api/chat]", error);
     return NextResponse.json(
