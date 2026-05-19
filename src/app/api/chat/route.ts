@@ -50,12 +50,12 @@ function buildSystemPrompt(childContext?: string, memory?: string | null): strin
 }
 
 /** 子どものメモリをDBから取得する（Lite/Pro のみ） */
-async function fetchChildMemory(userId: string): Promise<{ id: string; memory: string | null } | null> {
+async function fetchChildMemory(childId: string): Promise<{ id: string; memory: string | null } | null> {
   const db = createServiceSupabaseClient();
   const { data } = await db
     .from("children")
     .select("id, memory")
-    .eq("user_id", userId)
+    .eq("id", childId)
     .maybeSingle();
   return data ?? null;
 }
@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
     const planId = await fetchUserPlan(userId);
     const plan = getPlan(planId);
     const hasMemory = planId === "lite" || planId === "pro";
-    const childMemoryData = hasMemory ? await fetchChildMemory(userId) : null;
+    const childMemoryData = (hasMemory && childId) ? await fetchChildMemory(childId) : null;
 
     // 4. free プランの回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
     const db = createServiceSupabaseClient();
@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
     const usage = completion.usage;
 
     // 7. Lite/Pro: メモリを非同期更新（レスポンスをブロックしない）
-    const effectiveChildId = childMemoryData?.id ?? childId;
+    const effectiveChildId = childMemoryData?.id ?? childId ?? null;
     if (hasMemory && effectiveChildId && lastUserMessage) {
       void updateChildMemory(
         effectiveChildId,
