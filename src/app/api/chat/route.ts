@@ -29,7 +29,11 @@ const HISTORY_WINDOW: Record<PlanId, number> = {
   pro:  30,
 };
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openai;
+};
 
 /** DBからユーザーのプランを取得する */
 async function fetchUserPlan(userId: string): Promise<PlanId> {
@@ -161,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     // 6. OpenAI 呼び出し
     const MODEL = "gpt-4o-mini";
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
