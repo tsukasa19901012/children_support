@@ -61,8 +61,12 @@ function OnboardingForm() {
       .select("name, birthday, gender")
       .eq("id", childId!)
       .single()
-      .then(({ data }) => {
-        if (!data) return;
+      .then(({ data, error }) => {
+        if (error || !data) {
+          setError("データの読み込みに失敗しました。");
+          setLoading(false);
+          return;
+        }
         setName(data.name);
         const [y, m, d] = data.birthday.split("-").map(Number);
         setYear(y); setMonth(m); setDay(d);
@@ -91,6 +95,16 @@ function OnboardingForm() {
   };
 
   const save = async (selectedGender: Gender) => {
+    // 保存前に再バリデーション（直接API呼び出し等の迂回を防ぐ）
+    if (isFutureDate(year, month, safeDay)) {
+      setError("未来の日付は設定できません。");
+      return;
+    }
+    if (!name.trim()) {
+      setError("名前を入力してください。");
+      return;
+    }
+
     setSaving(true);
     setError("");
     const supabase = createClient();

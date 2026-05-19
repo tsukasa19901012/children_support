@@ -20,7 +20,7 @@ export default function Home() {
   const { childId, childName, childBirthday, childChecked } = useChildRedirect(userId);
   const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
   const historyDays = getPlan(planId).historyDays;
-  const { messages, setMessages, historyLoading } = useChatHistory(userId, historyDays);
+  const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, historyDays);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -56,10 +56,12 @@ export default function Home() {
         }),
       });
 
-      // 上限到達: カウントを上限値に同期してモーダルを表示
+      // 上限到達: 楽観的に追加したメッセージを戻し、入力欄を復元してモーダルを表示
       if (res.status === 429) {
         const limit = getPlan(planId).dailyLimit;
         if (limit !== null) syncUsageToLimit(limit);
+        setMessages((prev) => prev.filter((_, i) => i !== prev.length - 1));
+        setInput(text);
         setShowUpgrade(true);
         return;
       }
@@ -139,11 +141,18 @@ export default function Home() {
         </div>
       )}
 
+      {/* History error */}
+      {historyError && !historyLoading && (
+        <div className="shrink-0 bg-red-50 border-b border-red-100 px-4 py-2 text-xs text-red-500 text-center">
+          会話履歴の読み込みに失敗しました。ページを再読み込みしてください。
+        </div>
+      )}
+
       {/* Messages */}
       <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((m, i) => (
           <div
-            key={i}
+            key={`${m.role}-${i}`}
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
@@ -164,6 +173,13 @@ export default function Home() {
                     ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
                     ol: ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
                     li: ({ children }) => <li>{children}</li>,
+                    // javascript: スキームのリンクを無害化
+                    a: ({ href, children }) => {
+                      const safe = href?.startsWith("http") || href?.startsWith("https");
+                      return safe
+                        ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{children}</a>
+                        : <span>{children}</span>;
+                    },
                   }}
                 >
                   {m.text}

@@ -49,20 +49,22 @@ function buildSystemPrompt(childContext?: string, memory?: string | null): strin
   return prompt;
 }
 
-/** 子どものメモリをDBから取得する（Lite/Pro のみ） */
-async function fetchChildMemory(childId: string): Promise<{ id: string; memory: string | null } | null> {
+/** 子どものメモリをDBから取得する（Lite/Pro のみ）。user_id で所有権を検証。 */
+async function fetchChildMemory(childId: string, userId: string): Promise<{ id: string; memory: string | null } | null> {
   const db = createServiceSupabaseClient();
   const { data } = await db
     .from("children")
     .select("id, memory")
     .eq("id", childId)
+    .eq("user_id", userId)   // 他人の子どもへのアクセスを防止
     .maybeSingle();
   return data ?? null;
 }
 
-/** 会話内容からメモリを更新する（非同期・非致命的） */
+/** 会話内容からメモリを更新する（非同期・非致命的）。user_id で所有権を検証。 */
 async function updateChildMemory(
   childId: string,
+  userId: string,
   currentMemory: string | null,
   userMessage: string,
   aiMessage: string,
@@ -102,7 +104,8 @@ AIの回答: ${aiMessage}`;
     await db
       .from("children")
       .update({ memory: newMemory, updated_at: new Date().toISOString() })
-      .eq("id", childId);
+      .eq("id", childId)
+      .eq("user_id", userId); // 所有権を再確認して更新
   } catch (err) {
     console.warn("[/api/chat] メモリ更新失敗（非致命的）:", err);
   }
@@ -247,7 +250,7 @@ export async function POST(request: NextRequest) {
     const planId = await fetchUserPlan(userId);
     const plan = getPlan(planId);
     const hasMemory = planId === "lite" || planId === "pro";
-    const childMemoryData = (hasMemory && childId) ? await fetchChildMemory(childId) : null;
+    const childMemoryData = (hasMemory && childId) ? await fetchChildMemory(childId, userId) : null;
 
     // 4. free プランの回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
     const db = createServiceSupabaseClient();
@@ -263,6 +266,14 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.warn("[/api/chat] ユーザーメッセージ事前挿入失敗:", insertError.message);
+        // insert失敗時でも独立してカウントチェックし、上限を超えていたらブロック
+        const fallbackCount = await fetchTodayUsage(userId);
+        if (fallbackCount >= plan.dailyLimit) {
+          return NextResponse.json(
+            { error: getUpgradeMessage(plan.dailyLimit), limitReached: true },
+            { status: 429 }
+          );
+        }
       } else {
         insertedMessageId = inserted?.id ?? null;
       }
@@ -313,6 +324,7 @@ export async function POST(request: NextRequest) {
     if (hasMemory && effectiveChildId && lastUserMessage) {
       void updateChildMemory(
         effectiveChildId,
+        userId,
         childMemoryData?.memory ?? null,
         lastUserMessage.content,
         aiMessage,

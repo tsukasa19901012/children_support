@@ -80,12 +80,20 @@ export async function POST(request: NextRequest) {
 
   for (const user of proUsers) {
     try {
-      // 子ども情報を取得
-      const { data: child } = await db
-        .from("children")
-        .select("name, birthday, memory")
-        .eq("user_id", user.id)
+      // active_child_id を優先し、未設定なら最初の子どもを使用
+      const { data: userData } = await db
+        .from("users")
+        .select("active_child_id")
+        .eq("id", user.id)
         .maybeSingle();
+
+      const activeChildId = userData?.active_child_id as string | null;
+
+      const childQuery = activeChildId
+        ? db.from("children").select("name, birthday, memory").eq("id", activeChildId).eq("user_id", user.id)
+        : db.from("children").select("name, birthday, memory").eq("user_id", user.id).order("created_at").limit(1);
+
+      const { data: child } = await childQuery.maybeSingle();
 
       if (!child) continue;
 

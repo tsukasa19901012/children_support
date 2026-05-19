@@ -17,6 +17,7 @@ type UseChatHistoryResult = {
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   historyLoading: boolean;
+  historyError: boolean;
 };
 
 /**
@@ -30,6 +31,7 @@ export const useChatHistory = (
 ): UseChatHistoryResult => {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
     if (userId === null) return;
@@ -52,6 +54,7 @@ export const useChatHistory = (
 
         if (error) {
           console.warn("[useChatHistory] 履歴取得失敗:", error.message);
+          setHistoryError(true);
           return;
         }
 
@@ -64,6 +67,7 @@ export const useChatHistory = (
         }
       } catch (err) {
         console.warn("[useChatHistory] 履歴取得例外:", err);
+        setHistoryError(true);
       } finally {
         setHistoryLoading(false);
       }
@@ -72,5 +76,5 @@ export const useChatHistory = (
     load();
   }, [userId, historyDays]);
 
-  return { messages, setMessages, historyLoading };
+  return { messages, setMessages, historyLoading, historyError };
 };
