@@ -19,22 +19,36 @@ type UseChatHistoryResult = {
   historyLoading: boolean;
 };
 
-export const useChatHistory = (userId: string | null): UseChatHistoryResult => {
+/**
+ * historyDays が null の場合は全件取得。
+ * 数値の場合はその日数分のみ取得（Freeプランは7日間）。
+ * アップグレード後は即座に全件が表示されるようになる。
+ */
+export const useChatHistory = (
+  userId: string | null,
+  historyDays: number | null = null
+): UseChatHistoryResult => {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
-    // userId が確定するまで待つ
     if (userId === null) return;
 
     const load = async () => {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
+        let query = supabase
           .from("messages")
           .select("role, content")
           .eq("user_id", userId)
           .order("created_at", { ascending: true });
+
+        if (historyDays !== null) {
+          const since = new Date(Date.now() - historyDays * 24 * 60 * 60 * 1000).toISOString();
+          query = query.gte("created_at", since);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
           console.warn("[useChatHistory] 履歴取得失敗:", error.message);
@@ -56,7 +70,7 @@ export const useChatHistory = (userId: string | null): UseChatHistoryResult => {
     };
 
     load();
-  }, [userId]);
+  }, [userId, historyDays]);
 
   return { messages, setMessages, historyLoading };
 };

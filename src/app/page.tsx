@@ -17,11 +17,12 @@ export default function Home() {
   const [input, setInput] = useState("");
   const { userId } = useAuthUserId();
   const { childId, childName, childBirthday, childChecked } = useChildRedirect(userId);
-  const { messages, setMessages, historyLoading } = useChatHistory(userId);
+  const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
+  const historyDays = getPlan(planId).historyDays;
+  const { messages, setMessages, historyLoading } = useChatHistory(userId, historyDays);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
