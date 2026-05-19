@@ -9,6 +9,7 @@ import { useChatHistory } from "../features/chat/hooks/useChatHistory";
 import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
+import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
 import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
 
@@ -16,8 +17,9 @@ type Message = ChatMessage;
 
 export default function Home() {
   const [input, setInput] = useState("");
+  const [showChildPicker, setShowChildPicker] = useState(false);
   const { userId } = useAuthUserId();
-  const { childId, childName, childBirthday, childChecked } = useChildRedirect(userId);
+  const { childId, childName, childBirthday, childChecked, allChildren, switchChild } = useChildRedirect(userId);
   const { canSend, remaining, planId, usedToday, recordUsage, syncUsageToLimit } = useUserPlan();
   const historyDays = getPlan(planId).historyDays;
   const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
@@ -102,18 +104,65 @@ export default function Home() {
     <div className="flex flex-col h-dvh bg-gray-100">
       {/* Header */}
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-base">
-            {childName && childBirthday
-              ? `${childName}（${formatAge(childBirthday)}）`
-              : "育児AIチャット"}
-          </span>
-          {planId === "pro" && (
-            <Link href="/account" className="text-xs text-blue-400 hover:text-blue-600 leading-none">
-              ⇄
-            </Link>
+        <div className="relative flex items-center gap-1">
+          {/* 子ども名 — Proで複数いる場合はタップで切替 */}
+          {planId === "pro" && allChildren.length > 1 ? (
+            <button
+              type="button"
+              onClick={() => setShowChildPicker((v) => !v)}
+              className="flex items-center gap-1 font-bold text-base text-gray-800 active:opacity-70"
+            >
+              {childName && childBirthday
+                ? `${childName}（${formatAge(childBirthday)}）`
+                : "育児AIチャット"}
+              <span className="text-gray-400 text-xs">{showChildPicker ? "▲" : "▼"}</span>
+            </button>
+          ) : (
+            <span className="font-bold text-base">
+              {childName && childBirthday
+                ? `${childName}（${formatAge(childBirthday)}）`
+                : "育児AIチャット"}
+            </span>
+          )}
+
+          {/* 子ども切替ドロップダウン */}
+          {showChildPicker && (
+            <>
+              {/* オーバーレイ */}
+              <div
+                className="fixed inset-0 z-20"
+                onClick={() => setShowChildPicker(false)}
+              />
+              <div className="absolute top-full left-0 mt-2 z-30 bg-white rounded-2xl shadow-lg border border-gray-100 min-w-[200px] overflow-hidden">
+                {allChildren.map((child) => (
+                  <button
+                    key={child.id}
+                    type="button"
+                    onClick={() => {
+                      switchChild(child.id);
+                      setShowChildPicker(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
+                      child.id === childId
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+                    }`}
+                  >
+                    <span className="text-lg">👶</span>
+                    <div>
+                      <p className="text-sm font-medium">{child.name}</p>
+                      <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
+                    </div>
+                    {child.id === childId && (
+                      <span className="ml-auto text-blue-500 text-xs font-bold">表示中</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
+
         <div className="flex items-center gap-2">
           <PlanBadge planId={planId} remaining={remaining} />
           {isFree && (
