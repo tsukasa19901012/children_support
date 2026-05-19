@@ -17,6 +17,22 @@ type RequestBody = {
   messages: Message[];
 };
 
+const ALLOWED_ROLES = new Set<string>(["user", "assistant"]);
+const MAX_MESSAGES = 50;
+const MAX_CONTENT_LENGTH = 4000;
+
+/** JST の本日 0:00 を UTC で返す */
+function getJSTDayStart(): Date {
+  const jstOffset = 9 * 60 * 60 * 1000;
+  const jstNow = new Date(Date.now() + jstOffset);
+  const jstMidnight = new Date(Date.UTC(
+    jstNow.getUTCFullYear(),
+    jstNow.getUTCMonth(),
+    jstNow.getUTCDate(),
+  ));
+  return new Date(jstMidnight.getTime() - jstOffset);
+}
+
 const SYSTEM_PROMPT =
   "あなたは育児専門のAIアシスタントです。簡潔で実用的に答えてください。";
 
@@ -47,18 +63,16 @@ async function fetchUserPlan(userId: string): Promise<PlanId> {
   return (data?.plan as PlanId | null) ?? "free";
 }
 
-/** 本日のユーザー送信回数をDBから取得する */
+/** 本日（JST基準）のユーザー送信回数をDBから取得する */
 async function fetchTodayUsage(userId: string): Promise<number> {
   const db = createServiceSupabaseClient();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
 
   const { count } = await db
     .from("messages")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("role", "user")
-    .gte("created_at", todayStart.toISOString());
+    .gte("created_at", getJSTDayStart().toISOString());
 
   return count ?? 0;
 }
@@ -119,6 +133,7 @@ export async function POST(request: NextRequest) {
     // 2. リクエスト検証
     const body: RequestBody = await request.json();
     const { messages } = body;
+
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
         { error: "messages は空でない配列で指定してください。" },
@@ -126,16 +141,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (messages.length > MAX_MESSAGES) {
+      return NextResponse.json(
+        { error: `messages は${MAX_MESSAGES}件以下で指定してください。` },
+        { status: 400 }
+      );
+    }
+
     const hasInvalid = messages.some(
       (m) =>
-        !m.content ||
+        !ALLOWED_ROLES.has(m.role) ||
         typeof m.content !== "string" ||
         m.content.trim() === "" ||
-        m.content.length > 4000
+        m.content.length > MAX_CONTENT_LENGTH
     );
     if (hasInvalid) {
       return NextResponse.json(
-        { error: "メッセージは1〜4000文字で入力してください。" },
+        { error: "メッセージの形式が不正です。" },
+        { status: 400 }
+      );
+    }
+
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUserMessage) {
+      return NextResponse.json(
+        { error: "ユーザーメッセージが含まれていません。" },
         { status: 400 }
       );
     }
@@ -144,10 +174,31 @@ export async function POST(request: NextRequest) {
     const planId = await fetchUserPlan(userId);
     const plan = getPlan(planId);
 
-    // 4. free プランの回数制限チェック
+    // 4. free プランの回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
+    const db = createServiceSupabaseClient();
+    let insertedMessageId: string | null = null;
+
     if (plan.dailyLimit !== null) {
+      // ユーザーメッセージを先にDB挿入
+      const { data: inserted, error: insertError } = await db
+        .from("messages")
+        .insert({ user_id: userId, role: "user", content: lastUserMessage.content })
+        .select("id")
+        .single();
+
+      if (insertError) {
+        console.warn("[/api/chat] ユーザーメッセージ事前挿入失敗:", insertError.message);
+      } else {
+        insertedMessageId = inserted?.id ?? null;
+      }
+
+      // 挿入後にカウントを確認（並行リクエストがあっても正確）
       const usedToday = await fetchTodayUsage(userId);
-      if (usedToday >= plan.dailyLimit) {
+      if (usedToday > plan.dailyLimit) {
+        // 超過していたら挿入したメッセージを削除して制限エラーを返す
+        if (insertedMessageId) {
+          await db.from("messages").delete().eq("id", insertedMessageId);
+        }
         return NextResponse.json({ message: UPGRADE_MESSAGE });
       }
     }
@@ -157,6 +208,12 @@ export async function POST(request: NextRequest) {
     const trimmedMessages = messages.slice(-historyWindow);
 
     // 6. OpenAI を動的インポート（ビルド時に評価させない）
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "AIサービスが設定されていません。" },
+        { status: 503 }
+      );
+    }
     const { default: OpenAI } = await import("openai");
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -172,12 +229,9 @@ export async function POST(request: NextRequest) {
     const aiMessage = completion.choices[0]?.message?.content ?? "";
     const usage = completion.usage;
 
-    // 7. メッセージ保存 & トークン使用量記録（並列・非致命的）
-    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
-    await Promise.all([
-      lastUserMessage
-        ? saveMessages(userId, lastUserMessage.content, aiMessage)
-        : Promise.resolve(),
+    // 7. アシスタントメッセージ保存 & トークン使用量記録（並列・非致命的）
+    // free プラン以外はここでユーザーメッセージも保存する
+    const savePromises: Promise<void>[] = [
       usage
         ? saveTokenUsage(userId, MODEL, {
             prompt_tokens:     usage.prompt_tokens,
@@ -185,7 +239,27 @@ export async function POST(request: NextRequest) {
             total_tokens:      usage.total_tokens,
           })
         : Promise.resolve(),
-    ]);
+    ];
+
+    if (insertedMessageId) {
+      // 事前挿入済みのためアシスタントメッセージのみ追加
+      savePromises.push(
+        (async () => {
+          try {
+            const { error } = await db
+              .from("messages")
+              .insert({ user_id: userId, role: "assistant", content: aiMessage });
+            if (error) console.warn("[/api/chat] assistantメッセージ保存失敗:", error.message);
+          } catch (err) {
+            console.warn("[/api/chat] assistantメッセージ保存例外:", err);
+          }
+        })()
+      );
+    } else {
+      savePromises.push(saveMessages(userId, lastUserMessage.content, aiMessage));
+    }
+
+    await Promise.all(savePromises);
 
     return NextResponse.json({ message: aiMessage });
   } catch (error) {
