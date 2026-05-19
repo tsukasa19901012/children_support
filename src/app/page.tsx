@@ -360,10 +360,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* Input */}
-      <footer className="shrink-0 bg-white border-t px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex gap-2 items-center">
+      {/* Input — text-base(16px)でiOSの自動ズームを防止、items-endで送信ボタンを下揃え */}
+      <footer className="shrink-0 bg-white border-t px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
         <textarea
-          className="flex-1 border border-gray-300 rounded-2xl px-4 py-2 text-sm outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none"
+          className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 text-base leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
           rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -380,7 +380,7 @@ export default function Home() {
           type="button"
           onClick={sendMessage}
           disabled={inputDisabled}
-          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors"
+          className="shrink-0 mb-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors"
         >
           送信
         </button>

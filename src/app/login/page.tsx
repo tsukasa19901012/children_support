@@ -185,7 +185,7 @@ function LoginForm() {
               placeholder="example@email.com"
               required
               disabled={status === "loading"}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 disabled:bg-gray-50 mb-4"
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-400 disabled:bg-gray-50 mb-4"
             />
 
             {errorMessage && (
