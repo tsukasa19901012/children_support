@@ -146,13 +146,15 @@ Supabase Dashboard → SQL Editor で以下のファイルを**順番に**実行
 
 ```
 supabase/migrations/
-├── 20260518_init.sql                    # users・messages テーブル、RLS
-├── 20260518_add_stripe_customer_id.sql  # stripe_customer_id 追加
-├── 20260518_add_token_usage.sql         # token_usage テーブル
-├── 20260519_add_children.sql            # children テーブル（子ども情報）
-├── 20260519_add_child_memory.sql        # children.memory 列追加
-├── 20260519_fix_rls_plan_protection.sql # plan列の直接書き換え禁止
-└── 20260520_multi_children.sql          # 複数子ども対応・active_child_id
+├── 20260518_init.sql                        # users・messages テーブル、RLS
+├── 20260518_add_stripe_customer_id.sql      # stripe_customer_id 追加
+├── 20260518_add_token_usage.sql             # token_usage テーブル
+├── 20260519_add_children.sql                # children テーブル（子ども情報）
+├── 20260519_add_child_memory.sql            # children.memory 列追加
+├── 20260519_fix_rls_plan_protection.sql     # plan列の直接書き換え禁止
+├── 20260520_multi_children.sql              # 複数子ども対応・active_child_id
+├── 20260520_children_plan_limit.sql         # Free/LiteはDB側でも子ども1人に制限
+└── 20260520_add_child_id_to_messages.sql    # messages に child_id 追加（子どもごとに履歴を分離）
 ```
 
 ### 4. Supabase 認証の設定
