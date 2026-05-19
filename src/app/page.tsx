@@ -9,6 +9,7 @@ import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import { formatAge, buildChildContext } from "../lib/childAge";
+import { getPlan } from "../features/billing/plans";
 
 type Message = ChatMessage;
 
@@ -71,6 +72,7 @@ export default function Home() {
   const isLimited = !canSend;
   const isFree = planId === "free";
   const inputDisabled = loading || isLimited;
+  const dailyLimit = getPlan(planId).dailyLimit;
 
   // 子ども情報の確認が終わるまでローディング
   if (userId && !childChecked) {
@@ -158,7 +160,7 @@ export default function Home() {
       {/* Limit banner */}
       {isLimited && (
         <div className="shrink-0 bg-amber-50 border-t border-amber-200 px-4 py-3 text-sm text-amber-800 text-center">
-          本日の無料利用回数（3回）を使い切りました。
+          本日の無料利用回数（{dailyLimit}回）を使い切りました。
           <button
             type="button"
             onClick={() => setShowUpgrade(true)}

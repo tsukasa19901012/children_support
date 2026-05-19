@@ -108,8 +108,9 @@ AIの回答: ${aiMessage}`;
   }
 }
 
-const UPGRADE_MESSAGE =
-  "本日の無料枠（3回）を使い切りました。月980円の Lite プランにアップグレードすると無制限でご利用いただけます。";
+function getUpgradeMessage(dailyLimit: number): string {
+  return `本日の無料枠（${dailyLimit}回）を使い切りました。月980円の Lite プランにアップグレードすると無制限でご利用いただけます。`;
+}
 
 /** プランごとの送信履歴ウィンドウ（トークン最適化） */
 const HISTORY_WINDOW: Record<PlanId, number> = {
@@ -273,7 +274,7 @@ export async function POST(request: NextRequest) {
         if (insertedMessageId) {
           await db.from("messages").delete().eq("id", insertedMessageId);
         }
-        return NextResponse.json({ message: UPGRADE_MESSAGE });
+        return NextResponse.json({ message: getUpgradeMessage(plan.dailyLimit!) });
       }
     }
 
