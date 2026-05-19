@@ -1,18 +1,18 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 
-type Status = "idle" | "loading" | "sent" | "error";
+type Status = "idle" | "loading" | "code_sent" | "verifying" | "error";
 
 function toJapaneseError(message: string): string {
   if (/rate limit/i.test(message))
     return "メールの送信制限に達しました。しばらく時間をおいてから再試行してください。";
   if (/invalid.*email|email.*invalid/i.test(message))
     return "メールアドレスの形式が正しくありません。";
-  if (/expired|invalid.*link|link.*invalid/i.test(message))
-    return "リンクが無効か期限切れです。再度メールアドレスを入力して送り直してください。";
+  if (/expired|invalid|token/i.test(message))
+    return "コードが無効か期限切れです。再度メールアドレスを入力して送り直してください。";
   if (/already registered/i.test(message))
     return "このメールアドレスはすでに登録されています。";
   if (/network|fetch/i.test(message))
@@ -22,17 +22,18 @@ function toJapaneseError(message: string): string {
 
 function LoginForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const hasAuthError = searchParams.get("error") === "auth_failed";
 
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState(
-    hasAuthError
-      ? "リンクが無効か期限切れです。再度メールアドレスを入力して送り直してください。"
-      : ""
+    hasAuthError ? "認証に失敗しました。再度お試しください。" : ""
   );
+  const codeInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
@@ -42,16 +43,57 @@ function LoginForm() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { shouldCreateUser: true },
     });
 
     if (error) {
       setErrorMessage(toJapaneseError(error.message));
       setStatus("error");
     } else {
-      setStatus("sent");
+      setStatus("code_sent");
+      setTimeout(() => codeInputRef.current?.focus(), 100);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedCode = code.trim();
+    if (!trimmedCode) return;
+
+    setStatus("verifying");
+    setErrorMessage("");
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: trimmedCode,
+      type: "email",
+    });
+
+    if (error) {
+      setErrorMessage(toJapaneseError(error.message));
+      setStatus("code_sent");
+    } else {
+      router.replace("/");
+    }
+  };
+
+  const handleResend = async () => {
+    setCode("");
+    setErrorMessage("");
+    setStatus("loading");
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true },
+    });
+
+    if (error) {
+      setErrorMessage(toJapaneseError(error.message));
+      setStatus("error");
+    } else {
+      setStatus("code_sent");
     }
   };
 
@@ -62,32 +104,71 @@ function LoginForm() {
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">👶</div>
           <h1 className="text-xl font-bold text-gray-800">育児AIチャット</h1>
-          <p className="text-sm text-gray-500 mt-1">メールアドレスでログイン</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {status === "code_sent" || status === "verifying"
+              ? "確認コードを入力"
+              : "メールアドレスでログイン"}
+          </p>
         </div>
 
-        {status === "sent" ? (
-          /* 送信完了 */
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8 text-center">
-            <div className="text-4xl mb-3">📩</div>
-            <p className="font-medium text-gray-800 mb-2">メールを送信しました</p>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              <span className="font-medium text-gray-700">{email}</span>{" "}
-              宛にログインリンクを送りました。
-              <br />
-              メールを確認してリンクをタップしてください。
-            </p>
-            <button
-              type="button"
-              onClick={() => { setStatus("idle"); setEmail(""); }}
-              className="mt-6 text-sm text-blue-500 underline"
-            >
-              別のメールアドレスで試す
-            </button>
-          </div>
-        ) : (
-          /* ログインフォーム */
+        {status === "code_sent" || status === "verifying" ? (
+          /* コード入力フォーム */
           <form
-            onSubmit={handleSubmit}
+            onSubmit={handleVerifyCode}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8"
+          >
+            <p className="text-sm text-gray-600 mb-4 text-center leading-relaxed">
+              <span className="font-medium text-gray-800">{email}</span> に
+              <br />
+              6桁の確認コードを送りました
+            </p>
+
+            <input
+              ref={codeInputRef}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="123456"
+              disabled={status === "verifying"}
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-400 disabled:bg-gray-50 mb-4 text-center text-xl tracking-widest"
+            />
+
+            {errorMessage && (
+              <p className="text-xs text-red-500 mb-3 text-center">{errorMessage}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === "verifying" || code.length < 6}
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
+            >
+              {status === "verifying" ? "確認中..." : "ログイン"}
+            </button>
+
+            <div className="flex justify-between mt-4">
+              <button
+                type="button"
+                onClick={() => { setStatus("idle"); setCode(""); setErrorMessage(""); }}
+                className="text-xs text-gray-400 underline"
+              >
+                メールアドレスを変更
+              </button>
+              <button
+                type="button"
+                onClick={handleResend}
+                className="text-xs text-blue-500 underline"
+              >
+                コードを再送する
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* メール入力フォーム */
+          <form
+            onSubmit={handleSendCode}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8"
           >
             <label
@@ -107,7 +188,6 @@ function LoginForm() {
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 disabled:bg-gray-50 mb-4"
             />
 
-            {/* URL パラメータ or 送信エラー */}
             {errorMessage && (
               <p className="text-xs text-red-500 mb-3">{errorMessage}</p>
             )}
@@ -117,11 +197,11 @@ function LoginForm() {
               disabled={status === "loading" || !email.trim()}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
             >
-              {status === "loading" ? "送信中..." : "ログインリンクを送る"}
+              {status === "loading" ? "送信中..." : "確認コードを送る"}
             </button>
 
             <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
-              メールアドレスにログイン用のリンクを送ります。
+              メールアドレスに6桁の確認コードを送ります。
               <br />
               パスワードは不要です。
             </p>
