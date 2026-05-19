@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { getPlan } from "../../../features/billing/plans";
 import type { PlanId } from "../../../features/billing/types";
@@ -31,17 +30,10 @@ const HISTORY_WINDOW: Record<PlanId, number> = {
   pro:  30,
 };
 
-let _openai: OpenAI | null = null;
-const getOpenAI = () => {
-  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return _openai;
-};
-
 /** DBからユーザーのプランを取得する */
 async function fetchUserPlan(userId: string): Promise<PlanId> {
   const db = createServiceSupabaseClient();
 
-  // ユーザーレコードが存在しない場合は作成する（FK制約対応）
   await db
     .from("users")
     .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
@@ -134,7 +126,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 各メッセージのコンテンツを検証
     const hasInvalid = messages.some(
       (m) =>
         !m.content ||
@@ -149,11 +140,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. DBからプランを取得（クライアントからの入力は使わない）
+    // 3. DBからプランを取得
     const planId = await fetchUserPlan(userId);
     const plan = getPlan(planId);
 
-    // 4. free プランの回数制限チェック（DBで正確にカウント）
+    // 4. free プランの回数制限チェック
     if (plan.dailyLimit !== null) {
       const usedToday = await fetchTodayUsage(userId);
       if (usedToday >= plan.dailyLimit) {
@@ -162,12 +153,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. プランに応じて送信履歴ウィンドウを適用
-    const window = HISTORY_WINDOW[planId];
-    const trimmedMessages = messages.slice(-window);
+    const historyWindow = HISTORY_WINDOW[planId];
+    const trimmedMessages = messages.slice(-historyWindow);
 
-    // 6. OpenAI 呼び出し
+    // 6. OpenAI を動的インポート（ビルド時に評価させない）
+    const { default: OpenAI } = await import("openai");
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
     const MODEL = "gpt-4o-mini";
-    const completion = await getOpenAI().chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
