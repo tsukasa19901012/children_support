@@ -8,6 +8,8 @@ import { UpgradeModal } from "../features/billing/components/UpgradeModal";
 import { useChatHistory } from "../features/chat/hooks/useChatHistory";
 import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
+import { useKeyboardInset } from "../hooks/useKeyboardInset";
+import { useElementHeight } from "../hooks/useElementHeight";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
 import { formatAge, buildChildContext } from "../lib/childAge";
@@ -29,6 +31,7 @@ export default function Home() {
   const { userId } = useAuthUserId();
   const { childId, childName, childBirthday, childChecked, allChildren, switchChild } = useChildRedirect(userId);
   const { canSend, remaining, planId, planLoaded, usedToday, recordUsage, syncUsageToLimit } = useUserPlan(userId);
+  const isLimited = planLoaded && !canSend;
   const historyDays = getPlan(planId).historyDays;
   const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
   const [loading, setLoading] = useState(false);
@@ -37,6 +40,9 @@ export default function Home() {
   const [deleting, setDeleting] = useState(false);
   const [rebuildingMemory, setRebuildingMemory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const keyboardInset = useKeyboardInset();
+  const composerHeight = useElementHeight(composerRef, [isLimited, childChecked]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,7 +166,6 @@ export default function Home() {
     setDeleteTarget(null);
   };
 
-  const isLimited = planLoaded && !canSend;
   const isFree = planLoaded && planId === "free";
   const inputDisabled = loading || isLimited;
   const dailyLimit = getPlan(planId).dailyLimit;
@@ -275,8 +280,11 @@ export default function Home() {
         </div>
       )}
 
-      {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* Messages — 下の固定コンポーザー分だけ余白 */}
+      <main
+        className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+        style={{ paddingBottom: composerHeight > 0 ? composerHeight : undefined }}
+      >
         {messages.map((m, i) => (
           <div
             key={m.id ?? `${m.role}-${i}`}
@@ -346,45 +354,50 @@ export default function Home() {
         <div ref={bottomRef} />
       </main>
 
-      {/* Limit banner */}
-      {isLimited && (
-        <div className="shrink-0 bg-amber-50 border-t border-amber-200 px-4 py-3 text-sm text-amber-800 text-center">
-          本日の無料利用回数（{dailyLimit}回）を使い切りました。
+      {/* 固定コンポーザー（ChatGPT 方式: bottom のみ visualViewport 追従） */}
+      <div
+        ref={composerRef}
+        className="fixed left-0 right-0 z-10 bg-white border-t border-gray-200"
+        style={{ bottom: keyboardInset }}
+      >
+        {isLimited && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-800 text-center">
+            本日の無料利用回数（{dailyLimit}回）を使い切りました。
+            <button
+              type="button"
+              onClick={() => setShowUpgrade(true)}
+              className="ml-2 font-medium underline text-amber-900"
+            >
+              プランを見る →
+            </button>
+          </div>
+        )}
+        <footer className="px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
+          <textarea
+            className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
+            style={{ fontSize: 16 }}
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              isLimited
+                ? "本日の利用上限に達しました"
+                : loading
+                ? "応答を待っています..."
+                : "育児の相談を入力..."
+            }
+            disabled={inputDisabled}
+          />
           <button
             type="button"
-            onClick={() => setShowUpgrade(true)}
-            className="ml-2 font-medium underline text-amber-900"
+            onClick={sendMessage}
+            disabled={inputDisabled}
+            className="shrink-0 mb-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors"
           >
-            プランを見る →
+            送信
           </button>
-        </div>
-      )}
-
-      {/* Input — text-base(16px)でiOSの自動ズームを防止、items-endで送信ボタンを下揃え */}
-      <footer className="shrink-0 bg-white border-t px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex gap-2 items-end">
-        <textarea
-          className="flex-1 min-w-0 border border-gray-300 rounded-2xl px-4 py-2.5 text-base leading-normal outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400 resize-none max-h-32"
-          rows={1}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={
-            isLimited
-              ? "本日の利用上限に達しました"
-              : loading
-              ? "応答を待っています..."
-              : "育児の相談を入力..."
-          }
-          disabled={inputDisabled}
-        />
-        <button
-          type="button"
-          onClick={sendMessage}
-          disabled={inputDisabled}
-          className="shrink-0 mb-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors"
-        >
-          送信
-        </button>
-      </footer>
+        </footer>
+      </div>
 
       {/* Upgrade modal */}
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
