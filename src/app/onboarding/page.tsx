@@ -187,7 +187,7 @@ function OnboardingForm() {
               type="text" value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：たろう" maxLength={20} autoFocus
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-400 mb-5"
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-400 mb-5"
             />
             <button type="submit" disabled={!name.trim()}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors">
@@ -209,21 +209,21 @@ function OnboardingForm() {
               <div className="flex-1">
                 <label className="text-xs text-gray-400 block mb-1 text-center">年</label>
                 <select value={year} onChange={(e) => { const y = Number(e.target.value); setYear(y); setDay(clampDay(y, month, day)); }}
-                  className="w-full border border-gray-300 rounded-xl px-2 py-3 outline-none focus:border-blue-400 text-center">
+                  className="w-full border border-gray-300 rounded-xl px-2 py-3 text-sm outline-none focus:border-blue-400 text-center">
                   {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
               <div className="w-16">
                 <label className="text-xs text-gray-400 block mb-1 text-center">月</label>
                 <select value={month} onChange={(e) => { const m = Number(e.target.value); setMonth(m); setDay(clampDay(year, m, day)); }}
-                  className="w-full border border-gray-300 rounded-xl px-1 py-3 outline-none focus:border-blue-400 text-center">
+                  className="w-full border border-gray-300 rounded-xl px-1 py-3 text-sm outline-none focus:border-blue-400 text-center">
                   {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div className="w-16">
                 <label className="text-xs text-gray-400 block mb-1 text-center">日</label>
                 <select value={safeDay} onChange={(e) => setDay(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-xl px-1 py-3 outline-none focus:border-blue-400 text-center">
+                  className="w-full border border-gray-300 rounded-xl px-1 py-3 text-sm outline-none focus:border-blue-400 text-center">
                   {days.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>

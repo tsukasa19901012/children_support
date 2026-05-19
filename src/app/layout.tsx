@@ -5,8 +5,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // キーボードはオーバーレイ。チャット画面は visualViewport で高さを合わせる
-  interactiveWidget: "overlays-content",
+  // キーボード表示時にレイアウトをリサイズし、入力欄・送信ボタンが画面外に出ないようにする
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
