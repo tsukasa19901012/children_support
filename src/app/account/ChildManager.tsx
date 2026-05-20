@@ -166,13 +166,13 @@ export function ChildManager({
               isActive ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-white"
             }`}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-center gap-3">
               <div
-                className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${isActive ? "bg-blue-500" : "bg-gray-300"}`}
+                className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "bg-blue-500" : "bg-gray-300"}`}
               />
-              <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">
+              <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">
                     {child.name}
                     {child.gender && (
                       <span className="ml-1 text-xs font-normal text-gray-400">
@@ -182,10 +182,23 @@ export function ChildManager({
                   </p>
                   <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
                 </div>
-                {isActive && (
-                  <span className="shrink-0 text-xs text-blue-500 font-medium">
+                {isActive ? (
+                  <span className="shrink-0 text-xs text-blue-500 font-medium whitespace-nowrap">
                     ✓ 相談中
                   </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={switching === child.id}
+                    onClick={() => handleSwitch(child.id)}
+                    className="shrink-0 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors"
+                  >
+                    {switching === child.id
+                      ? "切り替え中..."
+                      : needsSelection
+                        ? "この子で相談"
+                        : "相談に切り替え"}
+                  </button>
                 )}
               </div>
             </div>
@@ -241,20 +254,6 @@ export function ChildManager({
                   className={`${actionBtn} text-red-600 bg-red-50 hover:bg-red-100`}
                 >
                   削除
-                </button>
-              )}
-              {!isActive && (
-                <button
-                  type="button"
-                  disabled={switching === child.id}
-                  onClick={() => handleSwitch(child.id)}
-                  className={`${actionBtn} text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50`}
-                >
-                  {switching === child.id
-                    ? "切り替え中..."
-                    : needsSelection
-                      ? "この子で相談"
-                      : "相談に切り替え"}
                 </button>
               )}
             </div>
