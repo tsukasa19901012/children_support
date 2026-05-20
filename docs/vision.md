@@ -1,6 +1,6 @@
 # Vision
 
-Parenting AI that reduces anxiety and supports caregivers of children aged 2–6.
+Parenting AI optimized for caregivers of children aged 0–6 (older children may also use the app).
 
 Focus:
 - Calm UX

@@ -4,7 +4,12 @@ import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccountReturn } from "../../features/account/hooks/useAccountReturn";
 import { createClient } from "../../lib/supabase-browser";
-import { formatAge } from "../../lib/childAge";
+import {
+  birthYearOptions,
+  formatAge,
+  isChildAgeInRecommendedRange,
+  RECOMMENDED_MAX_CHILD_AGE_YEARS,
+} from "../../lib/childAge";
 import { SiblingRelationsForm } from "../../features/child/components/SiblingRelationsForm";
 import {
   peerLinksFromForm,
@@ -37,7 +42,7 @@ const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
 const CURRENT_MONTH = NOW.getMonth() + 1;
 const CURRENT_DAY = NOW.getDate();
-const YEARS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i);
+const YEARS = birthYearOptions(NOW);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 function daysInMonth(year: number, month: number) {
@@ -159,6 +164,8 @@ function OnboardingForm() {
   const safeDay = clampDay(year, month, day);
   const birthday = `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
   const isFuture = isFutureDate(year, month, safeDay);
+  const isOutsideRecommended =
+    !isFuture && !isChildAgeInRecommendedRange(birthday);
   const agePreview = isFuture ? "未来の日付です" : formatAge(birthday);
 
   const siblingTargets = useMemo(() => {
@@ -226,7 +233,7 @@ function OnboardingForm() {
   };
 
   const handleGenderSelect = async (selected: Gender) => {
-    if (isFutureDate(year, month, safeDay)) {
+    if (isFuture) {
       setError("未来の日付は設定できません。");
       return;
     }
@@ -426,7 +433,9 @@ function OnboardingForm() {
             <p className="text-base font-semibold text-gray-800 mb-1">
               {name}ちゃんの誕生日は？
             </p>
-            <p className="text-xs text-gray-400 mb-5">年齢は自動で計算されます</p>
+            <p className="text-xs text-gray-400 mb-5 leading-relaxed">
+              0〜{RECOMMENDED_MAX_CHILD_AGE_YEARS}歳向けに最適化しています。7歳以上のお子さんもご利用いただけます。年齢は自動で計算されます。
+            </p>
             <div className="flex gap-2 mb-4">
               <div className="flex-1">
                 <label className="text-xs text-gray-400 block mb-1 text-center">
@@ -486,19 +495,25 @@ function OnboardingForm() {
               </div>
             </div>
             <div
-              className={`rounded-xl px-4 py-3 text-center mb-5 ${isFuture ? "bg-red-50" : "bg-blue-50"}`}
+              className={`rounded-xl px-4 py-3 text-center mb-3 ${isFuture ? "bg-red-50" : isOutsideRecommended ? "bg-amber-50" : "bg-blue-50"}`}
             >
               <p
-                className={`text-xs mb-0.5 ${isFuture ? "text-red-400" : "text-blue-400"}`}
+                className={`text-xs mb-0.5 ${isFuture ? "text-red-400" : isOutsideRecommended ? "text-amber-600" : "text-blue-400"}`}
               >
                 現在の年齢
               </p>
               <p
-                className={`text-lg font-bold ${isFuture ? "text-red-500" : "text-blue-600"}`}
+                className={`text-lg font-bold ${isFuture ? "text-red-500" : isOutsideRecommended ? "text-amber-700" : "text-blue-600"}`}
               >
                 {agePreview}
               </p>
             </div>
+            {isOutsideRecommended && (
+              <p className="text-xs text-amber-700 mb-5 leading-relaxed">
+                0〜{RECOMMENDED_MAX_CHILD_AGE_YEARS}歳向けの内容です。7歳以上でもご利用いただけますが、発達段階に合わない回答になる場合があります。
+              </p>
+            )}
+            {!isOutsideRecommended && <div className="mb-5" />}
             <button
               type="button"
               onClick={handleBirthdayNext}
