@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getPlan } from "../plans";
-import { loadCachedPlan, saveCachedPlan } from "../planCache";
+import {
+  isPlanCacheFresh,
+  loadCachedPlan,
+  saveCachedPlan,
+} from "../planCache";
 import type { PlanId, UserPlan } from "../types";
 import { createClient } from "../../../lib/supabase-browser";
 
@@ -55,6 +59,8 @@ export const useUserPlan = (userId: string | null): UserPlan => {
       setPlanId(cached);
       setPlanLoaded(true);
     }
+
+    if (isPlanCacheFresh(userId)) return;
 
     const supabase = createClient();
     supabase

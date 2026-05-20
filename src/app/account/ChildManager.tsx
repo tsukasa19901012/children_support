@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
+import { saveChildCache } from "../../features/child/childCache";
 import {
   ACCOUNT_RELOAD_CHILDREN_KEY,
   markAccountReturnStack,
@@ -90,7 +91,14 @@ export function ChildManager({
       .from("users")
       .update({ active_child_id: childId })
       .eq("id", userId);
-    if (!error) setActiveChildId(childId);
+    if (!error) {
+      setActiveChildId(childId);
+      saveChildCache(
+        userId,
+        children.map((c) => ({ id: c.id, name: c.name, birthday: c.birthday })),
+        childId
+      );
+    }
     setSwitching(null);
   };
 
@@ -127,7 +135,6 @@ export function ChildManager({
     }
     setDeleteTarget(null);
     setDeleting(false);
-    router.refresh();
   };
 
   const childNameMap = new Map(children.map((c) => [c.id, c.name]));

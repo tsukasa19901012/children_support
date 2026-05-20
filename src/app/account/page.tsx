@@ -9,6 +9,7 @@ import { getJSTDayStartISO } from "../../lib/date";
 import { AccountActions } from "./AccountActions";
 import { ChildManager } from "./ChildManager";
 import { PlanCacheWriter } from "../../features/billing/components/PlanCacheWriter";
+import { ChildCacheWriter } from "../../features/child/components/ChildCacheWriter";
 
 const PLAN_COLOR: Record<PlanId, string> = {
   free: "bg-gray-100 text-gray-700",
@@ -70,6 +71,15 @@ export default async function AccountPage() {
   return (
     <div className="flex flex-col h-dvh bg-gray-50">
       <PlanCacheWriter userId={user.id} planId={planId} />
+      <ChildCacheWriter
+        userId={user.id}
+        activeChildId={activeChildId}
+        children={children.map((c) => ({
+          id: c.id,
+          name: c.name,
+          birthday: c.birthday,
+        }))}
+      />
       <header className="shrink-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
           ← チャットに戻る

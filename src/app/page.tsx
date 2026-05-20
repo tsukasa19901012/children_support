@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
+import { ChatMarkdown } from "../features/chat/components/ChatMarkdown";
 import { useUserPlan } from "../features/billing/hooks/useUserPlan";
 import { UpgradeModal } from "../features/billing/components/UpgradeModal";
 import { useChatHistory } from "../features/chat/hooks/useChatHistory";
@@ -43,7 +43,7 @@ export default function Home() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const keyboardInset = useKeyboardInset();
-  const composerHeight = useElementHeight(composerRef, [isLimited, childChecked, input]);
+  const composerHeight = useElementHeight(composerRef, [isLimited, childChecked]);
   const inputRef = useAutoResizeTextarea(input, 10);
 
   useEffect(() => {
@@ -269,7 +269,7 @@ export default function Home() {
       </header>
 
       {/* History loading */}
-      {historyLoading && (
+      {historyLoading && messages.length <= 1 && (
         <div className="shrink-0 bg-blue-50 border-b border-blue-100 px-4 py-2 text-xs text-blue-500 text-center">
           会話履歴を読み込んでいます...
         </div>
@@ -307,24 +307,7 @@ export default function Home() {
                 {m.role === "user" ? (
                   <span className="whitespace-pre-wrap">{m.text}</span>
                 ) : (
-                  <ReactMarkdown
-                    components={{
-                      p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                      em: ({ children }) => <em className="italic">{children}</em>,
-                      ul: ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
-                      li: ({ children }) => <li>{children}</li>,
-                      a: ({ href, children }) => {
-                        const safe = href?.startsWith("http") || href?.startsWith("https");
-                        return safe
-                          ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{children}</a>
-                          : <span>{children}</span>;
-                      },
-                    }}
-                  >
-                    {m.text}
-                  </ReactMarkdown>
+                  <ChatMarkdown>{m.text}</ChatMarkdown>
                 )}
               </div>
               {m.role === "user" && m.id && !loading && (

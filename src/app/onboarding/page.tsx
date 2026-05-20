@@ -188,7 +188,6 @@ function OnboardingForm() {
     if (isAdd || isSiblingsOnly) returnToAccount(true);
     else {
       router.replace("/");
-      router.refresh();
     }
   };
 

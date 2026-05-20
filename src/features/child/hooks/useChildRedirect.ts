@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase-browser";
+import {
+  activeChildFromCache,
+  loadChildCache,
+  saveChildCache,
+  type ChildInfo,
+} from "../childCache";
 
-export type ChildInfo = {
-  id: string;
-  name: string;
-  birthday: string;
-};
+export type { ChildInfo };
 
 /**
  * ログイン済みユーザーのアクティブな子ども情報を取得し、
@@ -23,65 +25,99 @@ export function useChildRedirect(userId: string | null) {
   const [childChecked, setChildChecked] = useState(false);
   const [allChildren, setAllChildren] = useState<ChildInfo[]>([]);
 
+  const applyActiveChild = useCallback(
+    (children: ChildInfo[], activeId: string) => {
+      const active =
+        children.find((c) => c.id === activeId) ?? children[0] ?? null;
+      if (!active) return;
+      setAllChildren(children);
+      setChildId(active.id);
+      setChildName(active.name);
+      setChildBirthday(active.birthday);
+      setChildChecked(true);
+    },
+    []
+  );
+
+  useLayoutEffect(() => {
+    if (!userId) return;
+    const cached = loadChildCache(userId);
+    if (!cached) return;
+    const active = activeChildFromCache(cached);
+    if (active) applyActiveChild(cached.children, active.id);
+  }, [userId, applyActiveChild]);
+
   useEffect(() => {
     if (!userId) return;
 
     const supabase = createClient();
+    let cancelled = false;
 
     (async () => {
       try {
-        // 全子どもを取得
-        const { data: children } = await supabase
-          .from("children")
-          .select("id, name, birthday")
-          .eq("user_id", userId)
-          .order("created_at");
+        const [childrenRes, userRes] = await Promise.all([
+          supabase
+            .from("children")
+            .select("id, name, birthday")
+            .eq("user_id", userId)
+            .order("created_at"),
+          supabase
+            .from("users")
+            .select("active_child_id")
+            .eq("id", userId)
+            .single(),
+        ]);
 
+        if (cancelled) return;
+
+        const children = childrenRes.data;
         if (!children || children.length === 0) {
           router.replace("/onboarding");
           return;
         }
 
-        setAllChildren(children);
+        const activeId = userRes.data?.active_child_id as string | null;
+        const active =
+          children.find((c) => c.id === activeId) ?? children[0];
 
-        // active_child_id を取得
-        const { data: userData } = await supabase
-          .from("users")
-          .select("active_child_id")
-          .eq("id", userId)
-          .single();
-
-        const activeId = userData?.active_child_id as string | null;
-        const active = children.find((c) => c.id === activeId) ?? children[0];
-
-        // active_child_id が未設定または無効なら最初の子どもに設定
         if (!activeId || !children.find((c) => c.id === activeId)) {
-          await supabase.from("users").update({ active_child_id: active.id }).eq("id", userId);
+          await supabase
+            .from("users")
+            .update({ active_child_id: active.id })
+            .eq("id", userId);
         }
 
-        setChildId(active.id);
-        setChildName(active.name);
-        setChildBirthday(active.birthday);
-        setChildChecked(true);
+        saveChildCache(userId, children, active.id);
+        applyActiveChild(children, active.id);
       } catch (err) {
         console.error("[useChildRedirect] エラー:", err);
-        setChildChecked(true);
+        if (!cancelled) setChildChecked(true);
       }
     })();
-  }, [userId, router]);
 
-  /** アクティブな子どもをヘッダーから切り替える */
-  const switchChild = useCallback(async (newChildId: string) => {
-    if (!userId) return;
-    const target = allChildren.find((c) => c.id === newChildId);
-    if (!target) return;
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, router, applyActiveChild]);
 
-    const supabase = createClient();
-    await supabase.from("users").update({ active_child_id: newChildId }).eq("id", userId);
-    setChildId(target.id);
-    setChildName(target.name);
-    setChildBirthday(target.birthday);
-  }, [userId, allChildren]);
+  const switchChild = useCallback(
+    async (newChildId: string) => {
+      if (!userId) return;
+      const target = allChildren.find((c) => c.id === newChildId);
+      if (!target) return;
+
+      const supabase = createClient();
+      await supabase
+        .from("users")
+        .update({ active_child_id: newChildId })
+        .eq("id", userId);
+      saveChildCache(userId, allChildren, newChildId);
+      setChildId(target.id);
+      setChildName(target.name);
+      setChildBirthday(target.birthday);
+    },
+    [userId, allChildren]
+  );
 
   return { childId, childName, childBirthday, childChecked, allChildren, switchChild };
 }

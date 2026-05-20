@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../../lib/supabase-browser";
+import {
+  loadChatHistoryCache,
+  saveChatHistoryCache,
+} from "../chatHistoryCache";
 import { sortMessagesByChatOrder } from "../lib/sortMessages";
 
 export type ChatMessage = {
@@ -38,12 +42,20 @@ export const useChatHistory = (
   const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
-    // userId と childId が両方確定してから取得する
     if (userId === null || childId === null) return;
 
-    setMessages([INITIAL_MESSAGE]);
-    setHistoryLoading(true);
-    setHistoryError(false);
+    const cached =
+      loadChatHistoryCache(userId, childId, historyDays) ?? null;
+    if (cached) {
+      setMessages(cached);
+      setHistoryLoading(false);
+      setHistoryError(false);
+    } else {
+      setHistoryLoading(true);
+      setHistoryError(false);
+    }
+
+    let cancelled = false;
 
     const load = async () => {
       try {
@@ -52,20 +64,24 @@ export const useChatHistory = (
           .from("messages")
           .select("id, role, content, created_at")
           .eq("user_id", userId)
-          .eq("child_id", childId)   // 子どもごとに履歴を分ける
+          .eq("child_id", childId)
           .order("created_at", { ascending: true })
           .order("role", { ascending: false });
 
         if (historyDays !== null) {
-          const since = new Date(Date.now() - historyDays * 24 * 60 * 60 * 1000).toISOString();
+          const since = new Date(
+            Date.now() - historyDays * 24 * 60 * 60 * 1000
+          ).toISOString();
           query = query.gte("created_at", since);
         }
 
         const { data, error } = await query;
 
+        if (cancelled) return;
+
         if (error) {
           console.warn("[useChatHistory] 履歴取得失敗:", error.message);
-          setHistoryError(true);
+          if (!cached) setHistoryError(true);
           return;
         }
 
@@ -77,16 +93,25 @@ export const useChatHistory = (
             text: row.content,
           }));
           setMessages(history);
+          saveChatHistoryCache(userId, childId, historyDays, history);
+        } else if (!cached) {
+          setMessages([INITIAL_MESSAGE]);
         }
       } catch (err) {
-        console.warn("[useChatHistory] 履歴取得例外:", err);
-        setHistoryError(true);
+        if (!cancelled) {
+          console.warn("[useChatHistory] 履歴取得例外:", err);
+          if (!cached) setHistoryError(true);
+        }
       } finally {
-        setHistoryLoading(false);
+        if (!cancelled) setHistoryLoading(false);
       }
     };
 
-    load();
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId, childId, historyDays]);
 
   return { messages, setMessages, historyLoading, historyError };
