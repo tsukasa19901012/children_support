@@ -68,9 +68,9 @@ export default async function AccountPage() {
     : null;
 
   return (
-    <div className="min-h-dvh bg-gray-50">
+    <div className="flex flex-col h-dvh bg-gray-50">
       <PlanCacheWriter userId={user.id} planId={planId} />
-      <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
+      <header className="shrink-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
           ← チャットに戻る
         </Link>
@@ -78,6 +78,7 @@ export default async function AccountPage() {
         <div className="w-16" />
       </header>
 
+      <main className="flex-1 overflow-y-auto">
       <div className="max-w-md mx-auto px-4 py-6 space-y-4">
 
         {/* プラン */}
@@ -161,6 +162,7 @@ export default async function AccountPage() {
 
         <AccountActions planId={planId} />
       </div>
+      </main>
     </div>
   );
 }

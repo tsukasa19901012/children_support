@@ -1,12 +1,13 @@
 /** マイページ遷移時の即時表示用スケルトン */
 export default function AccountLoading() {
   return (
-    <div className="min-h-dvh bg-gray-50">
-      <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
+    <div className="flex flex-col h-dvh bg-gray-50">
+      <header className="shrink-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
         <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
         <div className="w-16" />
       </header>
+      <main className="flex-1 overflow-y-auto">
       <div className="max-w-md mx-auto px-4 py-6 space-y-4">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
@@ -16,6 +17,7 @@ export default function AccountLoading() {
           </div>
         ))}
       </div>
+      </main>
     </div>
   );
 }
