@@ -1,8 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   inverseRelation,
+  isSavedPeerRelation,
+  resolvePeerRelation,
   type ChildGender,
   type ChildPeerRelation,
+  type PeerRelationFormValue,
+  type PeerRelationKind,
 } from "../types/siblingRelation";
 
 export type SiblingRelationRow = {
@@ -15,6 +19,35 @@ export type SiblingLinkInput = {
   siblingId: string;
   relation: ChildPeerRelation;
 };
+
+export type PeerProfileForRelation = {
+  birthday: string;
+  gender: ChildGender;
+};
+
+/** フォーム値を誕生日から解決して保存対象のみ抽出 */
+export function peerLinksFromForm(
+  relations: Record<string, PeerRelationFormValue>,
+  childBirthday: string,
+  peers: Record<string, PeerProfileForRelation>
+): SiblingLinkInput[] {
+  return Object.entries(relations)
+    .filter((entry): entry is [string, PeerRelationKind] =>
+      isSavedPeerRelation(entry[1])
+    )
+    .map(([siblingId, kind]) => {
+      const peer = peers[siblingId];
+      return {
+        siblingId,
+        relation: resolvePeerRelation(
+          kind,
+          childBirthday,
+          peer?.birthday ?? childBirthday,
+          peer?.gender ?? null
+        ),
+      };
+    });
+}
 
 /** ある子どもに紐づくきょうだい関係をすべて置き換え（双方向を保存） */
 export async function saveChildSiblingRelations(

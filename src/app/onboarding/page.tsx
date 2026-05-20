@@ -5,10 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
 import { SiblingRelationsForm } from "../../features/child/components/SiblingRelationsForm";
-import { saveChildSiblingRelations } from "../../features/child/lib/siblingRelations";
 import {
-  suggestRelationToSibling,
-  type SiblingRelation,
+  peerLinksFromForm,
+  saveChildSiblingRelations,
+} from "../../features/child/lib/siblingRelations";
+import {
+  RELATION_NONE,
+  storedRelationToKind,
+  type ChildPeerRelation,
+  type PeerRelationFormValue,
 } from "../../features/child/types/siblingRelation";
 
 type Step = "name" | "birthday" | "gender" | "siblings";
@@ -73,7 +78,7 @@ function OnboardingForm() {
     isSiblingsOnly ? childIdParam : null
   );
   const [initialRelations, setInitialRelations] = useState<
-    Record<string, SiblingRelation>
+    Record<string, PeerRelationFormValue>
   >({});
 
   useEffect(() => {
@@ -109,9 +114,11 @@ function OnboardingForm() {
           .eq("child_id", childIdParam)
           .eq("user_id", user.id);
 
-        const init: Record<string, SiblingRelation> = {};
+        const init: Record<string, PeerRelationFormValue> = {};
         for (const r of rels ?? []) {
-          init[r.sibling_id] = r.relation as SiblingRelation;
+          init[r.sibling_id] = storedRelationToKind(
+            r.relation as ChildPeerRelation
+          );
         }
         setInitialRelations(init);
         setLoading(false);
@@ -184,7 +191,7 @@ function OnboardingForm() {
   const saveSiblingRelations = async (
     targetChildId: string,
     targetGender: Gender,
-    relations: Record<string, SiblingRelation>
+    relations: Record<string, PeerRelationFormValue>
   ) => {
     const supabase = createClient();
     const {
@@ -195,10 +202,15 @@ function OnboardingForm() {
       return;
     }
 
-    const links = Object.entries(relations).map(([siblingId, relation]) => ({
-      siblingId,
-      relation,
-    }));
+    const targetChild = existingChildren.find((c) => c.id === targetChildId);
+    const childBirthday = targetChild?.birthday ?? birthday;
+    const peerProfiles = Object.fromEntries(
+      existingChildren
+        .filter((c) => c.id !== targetChildId)
+        .map((c) => [c.id, { birthday: c.birthday, gender: c.gender }])
+    );
+
+    const links = peerLinksFromForm(relations, childBirthday, peerProfiles);
 
     const { error: saveErr } = await saveChildSiblingRelations(
       supabase,
@@ -288,13 +300,9 @@ function OnboardingForm() {
 
     const others = existingChildren;
     if (isPro && others.length > 0) {
-      const init: Record<string, SiblingRelation> = {};
+      const init: Record<string, PeerRelationFormValue> = {};
       for (const s of others) {
-        init[s.id] = suggestRelationToSibling(
-          birthday,
-          s.birthday,
-          s.gender
-        );
+        init[s.id] = others.length === 1 ? "sibling" : RELATION_NONE;
       }
       setInitialRelations(init);
       setNewChildId(child.id);

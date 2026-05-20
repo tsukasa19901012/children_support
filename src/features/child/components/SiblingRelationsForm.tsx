@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
-  RELATION_OPTION_GROUPS,
-  type ChildPeerRelation,
+  RELATION_KIND_OPTIONS,
+  RELATION_NONE,
+  type PeerRelationFormValue,
 } from "../types/siblingRelation";
 
 export type SiblingTarget = {
@@ -14,10 +15,10 @@ export type SiblingTarget = {
 type Props = {
   childName: string;
   siblings: SiblingTarget[];
-  initialRelations?: Record<string, ChildPeerRelation>;
+  initialRelations?: Record<string, PeerRelationFormValue>;
   saving: boolean;
   error?: string;
-  onSubmit: (relations: Record<string, ChildPeerRelation>) => void;
+  onSubmit: (relations: Record<string, PeerRelationFormValue>) => void;
   onBack?: () => void;
   onSkip?: () => void;
   submitLabel?: string;
@@ -34,19 +35,14 @@ export function SiblingRelationsForm({
   onSkip,
   submitLabel = "保存して完了",
 }: Props) {
-  const [relations, setRelations] = useState<Record<string, ChildPeerRelation>>(
+  const [relations, setRelations] = useState<Record<string, PeerRelationFormValue>>(
     () => {
-      const init: Record<string, ChildPeerRelation> = {};
+      const init: Record<string, PeerRelationFormValue> = {};
       for (const s of siblings) {
-        init[s.id] = initialRelations[s.id] ?? "younger_sister";
+        init[s.id] = initialRelations[s.id] ?? RELATION_NONE;
       }
       return init;
     }
-  );
-
-  const allSelected = useMemo(
-    () => siblings.every((s) => relations[s.id]),
-    [siblings, relations]
   );
 
   return (
@@ -55,34 +51,31 @@ export function SiblingRelationsForm({
         {childName}ちゃんとの関係は？
       </p>
       <p className="text-xs text-gray-400 mb-5 leading-relaxed">
-        きょうだい・いとこ・再従兄弟・友達など。友人関係の相談にも使います
+        関係があるお子さんだけ選んでください。年上・年下は誕生日から自動で判断します。関係のない組み合わせは「登録しない」で大丈夫です。
       </p>
 
       <div className="space-y-4 mb-5">
         {siblings.map((sibling) => (
           <div key={sibling.id}>
             <label className="text-xs text-gray-500 block mb-1.5">
-              {sibling.name}ちゃんは{childName}ちゃんの
+              {sibling.name}ちゃんと{childName}ちゃん
             </label>
             <select
-              value={relations[sibling.id] ?? ""}
+              value={relations[sibling.id] ?? RELATION_NONE}
               onChange={(e) =>
                 setRelations((prev) => ({
                   ...prev,
-                  [sibling.id]: e.target.value as ChildPeerRelation,
+                  [sibling.id]: e.target.value as PeerRelationFormValue,
                 }))
               }
               disabled={saving}
               className="w-full border border-gray-300 rounded-xl px-3 py-3 outline-none focus:border-blue-400 bg-white"
             >
-              {RELATION_OPTION_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </optgroup>
+              <option value={RELATION_NONE}>登録しない（関係なし）</option>
+              {RELATION_KIND_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
@@ -95,7 +88,7 @@ export function SiblingRelationsForm({
 
       <button
         type="button"
-        disabled={saving || !allSelected}
+        disabled={saving}
         onClick={() => onSubmit(relations)}
         className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
       >
