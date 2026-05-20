@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
+import {
+  relationLabel,
+  type SiblingRelation,
+} from "../../features/child/types/siblingRelation";
 
 export type ChildRow = {
   id: string;
@@ -12,11 +16,18 @@ export type ChildRow = {
   gender: string | null;
 };
 
+type SiblingRelationRow = {
+  child_id: string;
+  sibling_id: string;
+  relation: string;
+};
+
 type Props = {
   isPro: boolean;
   userId: string;
   initialChildren: ChildRow[];
   initialActiveChildId: string | null;
+  siblingRelations: SiblingRelationRow[];
 };
 
 const GENDER_LABEL: Record<string, string> = {
@@ -30,6 +41,7 @@ export function ChildManager({
   userId,
   initialChildren,
   initialActiveChildId,
+  siblingRelations,
 }: Props) {
   const router = useRouter();
   const [children] = useState(initialChildren);
@@ -49,6 +61,19 @@ export function ChildManager({
 
   const hasMultiple = children.length > 1;
   const needsSelection = !isPro && hasMultiple;
+
+  const childNameMap = new Map(children.map((c) => [c.id, c.name]));
+
+  const siblingSummary = (childId: string): string | null => {
+    const rels = siblingRelations.filter((r) => r.child_id === childId);
+    if (rels.length === 0) return null;
+    return rels
+      .map((r) => {
+        const name = childNameMap.get(r.sibling_id) ?? "きょうだい";
+        return `${relationLabel(r.relation as SiblingRelation)}の${name}ちゃん`;
+      })
+      .join("、");
+  };
 
   return (
     <div className="space-y-3">
@@ -82,10 +107,26 @@ export function ChildManager({
                   )}
                 </p>
                 <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
+                {isPro && hasMultiple && siblingSummary(child.id) && (
+                  <p className="text-xs text-violet-600 mt-0.5">
+                    {siblingSummary(child.id)}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              {isPro && hasMultiple && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/onboarding?mode=siblings&childId=${child.id}`)
+                  }
+                  className="text-xs text-violet-500 hover:text-violet-700 px-2 py-1 rounded-lg hover:bg-violet-50"
+                >
+                  きょうだい
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => router.push(`/onboarding?mode=edit&childId=${child.id}`)}

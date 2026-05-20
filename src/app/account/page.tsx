@@ -17,7 +17,7 @@ const PLAN_COLOR: Record<PlanId, string> = {
 async function fetchAccountData(userId: string) {
   const db = createServiceSupabaseClient();
 
-  const [userRes, usageRes, childrenRes] = await Promise.all([
+  const [userRes, usageRes, childrenRes, siblingRes] = await Promise.all([
     db.from("users").select("plan, active_child_id").eq("id", userId).single(),
     db
       .from("messages")
@@ -30,6 +30,10 @@ async function fetchAccountData(userId: string) {
       .select("id, name, birthday, gender")
       .eq("user_id", userId)
       .order("created_at"),
+    db
+      .from("child_sibling_relations")
+      .select("child_id, sibling_id, relation")
+      .eq("user_id", userId),
   ]);
 
   const planId = (userRes.data?.plan as PlanId | null) ?? "free";
@@ -44,6 +48,7 @@ async function fetchAccountData(userId: string) {
     todayUsage: usageRes.count ?? 0,
     children,
     activeChildId,
+    siblingRelations: siblingRes.data ?? [],
   };
 }
 
@@ -52,7 +57,8 @@ export default async function AccountPage() {
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) redirect("/login");
 
-  const { planId, todayUsage, children, activeChildId } = await fetchAccountData(user.id);
+  const { planId, todayUsage, children, activeChildId, siblingRelations } =
+    await fetchAccountData(user.id);
   const plan = getPlan(planId);
   const isFree = planId === "free";
   const remaining = isFree && plan.dailyLimit !== null
@@ -147,6 +153,7 @@ export default async function AccountPage() {
             userId={user.id}
             initialChildren={children}
             initialActiveChildId={activeChildId}
+            siblingRelations={siblingRelations}
           />
         </section>
 

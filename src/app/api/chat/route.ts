@@ -7,6 +7,8 @@ import {
   createServerSupabaseClient,
   createServiceSupabaseClient,
 } from "../../../lib/supabase-server";
+import { buildSiblingPromptBlock } from "../../../features/child/lib/buildSiblingPrompt";
+import type { SiblingRelation } from "../../../features/child/types/siblingRelation";
 
 type Message = {
   role: "user" | "assistant";
@@ -38,15 +40,75 @@ function getJSTDayStart(): Date {
 const BASE_SYSTEM_PROMPT =
   "あなたは育児専門の温かいAIアシスタントです。保護者の不安を受け止め、まず共感を示してから、簡潔で実用的なアドバイスをしてください。医療診断は行わず、必要な場合は専門家への相談を促してください。";
 
-function buildSystemPrompt(childContext?: string, memory?: string | null): string {
+function buildSystemPrompt(
+  childContext?: string,
+  memory?: string | null,
+  siblingBlock?: string | null
+): string {
   let prompt = BASE_SYSTEM_PROMPT;
   if (childContext) {
     prompt += `\n\n【相談者のお子さん】${childContext}回答時は子どもの名前・月齢・年齢を考慮してください。`;
+  }
+  if (siblingBlock) {
+    prompt += `\n\n${siblingBlock}`;
   }
   if (memory) {
     prompt += `\n\n【これまでの会話から学習した情報】\n${memory}\nこの情報を踏まえて、より的確で温かい回答をしてください。`;
   }
   return prompt;
+}
+
+/** Pro: 登録済みのきょうだい関係をプロンプト用に取得 */
+async function fetchSiblingPromptBlock(
+  childId: string,
+  userId: string
+): Promise<string | null> {
+  const db = createServiceSupabaseClient();
+
+  const { data: activeChild } = await db
+    .from("children")
+    .select("name, birthday")
+    .eq("id", childId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!activeChild) return null;
+
+  const { data: rels } = await db
+    .from("child_sibling_relations")
+    .select("relation, sibling_id")
+    .eq("child_id", childId)
+    .eq("user_id", userId);
+
+  if (!rels?.length) return null;
+
+  const siblingIds = rels.map((r) => r.sibling_id);
+  const { data: siblings } = await db
+    .from("children")
+    .select("id, name, birthday")
+    .in("id", siblingIds)
+    .eq("user_id", userId);
+
+  if (!siblings?.length) return null;
+
+  const siblingMap = new Map(siblings.map((s) => [s.id, s]));
+  const forPrompt = rels
+    .map((r) => {
+      const s = siblingMap.get(r.sibling_id);
+      if (!s) return null;
+      return {
+        name: s.name,
+        birthday: s.birthday,
+        relation: r.relation as SiblingRelation,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  return buildSiblingPromptBlock(
+    activeChild.name,
+    activeChild.birthday,
+    forPrompt
+  );
 }
 
 /** 子どものメモリをDBから取得する（Lite/Pro のみ）。user_id で所有権を検証。 */
@@ -316,7 +378,15 @@ export async function POST(request: NextRequest) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const MODEL = "gpt-4o-mini";
-    const systemPrompt = buildSystemPrompt(childContext, childMemoryData?.memory);
+    const siblingBlock =
+      planId === "pro" && childId
+        ? await fetchSiblingPromptBlock(childId, userId)
+        : null;
+    const systemPrompt = buildSystemPrompt(
+      childContext,
+      childMemoryData?.memory,
+      siblingBlock
+    );
     const completion = await openai.chat.completions.create({
       model: MODEL,
       messages: [
