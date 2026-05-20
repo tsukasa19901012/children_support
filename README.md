@@ -168,6 +168,12 @@ Authentication → Email → OTP の有効期限・桁数（6桁推奨）。
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_failed`
+4. **Customer Portal**（設定 → 請求 → カスタマーポータル）を有効化:
+   - プラン変更（Lite / Pro の Price を追加）
+   - 解約を許可
+   - 戻り先 URL はアプリ側で `/account` を指定（API から設定）
+
+マイページの「お支払い管理を開く」からポータルに遷移し、ダウングレード・解約ができます。
 
 ### 6. 開発サーバーを起動
 
