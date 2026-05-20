@@ -38,6 +38,9 @@ const GENDER_LABEL: Record<string, string> = {
   other: "未回答",
 };
 
+const actionBtn =
+  "flex-1 min-w-[calc(50%-0.25rem)] text-xs font-medium py-2.5 rounded-xl transition-colors";
+
 export function ChildManager({
   isPro,
   userId,
@@ -122,7 +125,9 @@ export function ChildManager({
     <div className="space-y-3">
       {needsSelection && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-xs text-amber-700 font-medium mb-0.5">相談するお子さんを選択してください</p>
+          <p className="text-xs text-amber-700 font-medium mb-0.5">
+            相談するお子さんを選択してください
+          </p>
           <p className="text-xs text-amber-600">
             Proプランに戻るとすべてのお子さんのデータが復活します
           </p>
@@ -131,65 +136,77 @@ export function ChildManager({
 
       {children.map((child) => {
         const isActive = child.id === activeChildId;
+        const peers = peerRelations(child.id);
+        const showPeers = isPro && hasMultiple && peers.length > 0;
+
         return (
           <div
             key={child.id}
-            className={`flex items-start justify-between rounded-2xl border px-4 py-3 transition-colors ${
+            className={`rounded-2xl border px-4 py-3 transition-colors ${
               isActive ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-white"
             }`}
           >
-            <div className="flex items-start gap-3 min-w-0 flex-1">
-              <div className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${isActive ? "bg-blue-500" : "bg-gray-300"}`} />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-800">
-                  {child.name}
-                  {child.gender && (
-                    <span className="ml-1 text-xs font-normal text-gray-400">
-                      {GENDER_LABEL[child.gender] ?? ""}
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
-                {isPro && hasMultiple && peerRelations(child.id).length > 0 && (
-                  <ul className="mt-2 space-y-1" aria-label="登録されている関係">
-                    {peerRelations(child.id).map((peer) => (
-                      <li
-                        key={peer.key}
-                        className="flex items-baseline gap-1.5 text-xs leading-snug"
-                      >
-                        <span className="shrink-0 rounded-md bg-violet-100 text-violet-700 px-1.5 py-0.5 text-[10px] font-medium">
-                          {peer.relation}
-                        </span>
-                        <span className="text-gray-600 truncate">
-                          {peer.name}ちゃん
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${isActive ? "bg-blue-500" : "bg-gray-300"}`}
+              />
+              <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {child.name}
+                    {child.gender && (
+                      <span className="ml-1 text-xs font-normal text-gray-400">
+                        {GENDER_LABEL[child.gender] ?? ""}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
+                </div>
+                {isActive && (
+                  <span className="shrink-0 text-xs text-blue-500 font-medium">
+                    ✓ 相談中
+                  </span>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 pt-0.5">
+            {showPeers && (
+              <ul
+                className="mt-3 ml-5 space-y-2 border-l-2 border-violet-100 pl-3"
+                aria-label="登録されている関係"
+              >
+                {peers.map((peer) => (
+                  <li key={peer.key} className="text-xs leading-relaxed">
+                    <span className="inline-block rounded-md bg-violet-100 text-violet-700 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap">
+                      {peer.relation}
+                    </span>
+                    <span className="text-gray-700 ml-2 break-words">
+                      {peer.name}ちゃん
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="mt-3 pt-3 flex flex-wrap gap-2 border-t border-gray-100">
               {isPro && hasMultiple && (
                 <button
                   type="button"
                   onClick={() =>
                     router.push(`/onboarding?mode=siblings&childId=${child.id}`)
                   }
-                  className="text-xs text-violet-500 hover:text-violet-700 px-2 py-1 rounded-lg hover:bg-violet-50"
+                  className={`${actionBtn} text-violet-600 bg-violet-50 hover:bg-violet-100`}
                 >
-                  関係
+                  関係を編集
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => router.push(`/onboarding?mode=edit&childId=${child.id}`)}
-                className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100"
+                className={`${actionBtn} text-gray-700 bg-gray-50 hover:bg-gray-100`}
               >
                 編集
               </button>
-
               {canDelete && (
                 <button
                   type="button"
@@ -197,27 +214,24 @@ export function ChildManager({
                     setDeleteError("");
                     setDeleteTarget(child);
                   }}
-                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50"
+                  className={`${actionBtn} text-red-600 bg-red-50 hover:bg-red-100`}
                 >
                   削除
                 </button>
               )}
-
               {!isActive && (
                 <button
                   type="button"
                   disabled={switching === child.id}
                   onClick={() => handleSwitch(child.id)}
-                  className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 disabled:opacity-50"
+                  className={`${actionBtn} text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50`}
                 >
-                  {switching === child.id ? "..." : needsSelection ? "選択する" : "切り替え"}
+                  {switching === child.id
+                    ? "切り替え中..."
+                    : needsSelection
+                      ? "この子で相談"
+                      : "相談に切り替え"}
                 </button>
-              )}
-
-              {isActive && (
-                <span className="text-xs text-blue-500 font-medium px-2 py-1">
-                  ✓ 相談中
-                </span>
               )}
             </div>
           </div>
