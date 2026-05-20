@@ -3,7 +3,10 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "../../../lib/stripe";
 import { getPlan } from "../../../features/billing/plans";
-import { createServerSupabaseClient } from "../../../lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  createServiceSupabaseClient,
+} from "../../../lib/supabase-server";
 import type { PlanId } from "../../../features/billing/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
@@ -50,13 +53,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const db = createServiceSupabaseClient();
+    const { data: userRow } = await db
+      .from("users")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const existingCustomerId = userRow?.stripe_customer_id as string | null;
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/cancel`,
-      // 認証済みユーザーのメールを Stripe に渡す（入力省略のため）
-      customer_email: user.email,
+      ...(existingCustomerId
+        ? { customer: existingCustomerId }
+        : { customer_email: user.email ?? undefined }),
       metadata: {
         planId: plan.id,
         userId: user.id,

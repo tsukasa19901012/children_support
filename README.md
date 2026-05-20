@@ -19,20 +19,23 @@
 - Lite/Proプランでは会話を蓄積して子どもの性格・傾向を学習（メモリ機能）
 - プランごとの送信回数制限（Free: 1日3回、Lite/Pro: 無制限）
 - 送信履歴ウィンドウ（Free: 5件、Lite: 10件、Pro: 30件）
+- 会話の削除（Lite/Pro はメモリ再計算）
 
 ### 子ども管理
 - オンボーディングで子どもの名前・誕生日・性別を登録
 - 誕生日から月齢・年齢をリアルタイム表示
-- マイページから情報の編集・追加が可能
-- **Proプランのみ**複数の子どもを登録・切り替え可能
-- ダウングレード時はアクティブな子どもを選択して継続利用
+- マイページから情報の編集・追加・削除（最後の1人は削除不可）
+- **Proプランのみ**複数の子どもを登録・切り替え
+- **Pro**: 子ども同士の関係（きょうだい・いとこ・友達など）。年上・年下は誕生日から自動判定
+- 関係のない組み合わせは「登録しない」で省略可能
+- Pro→Free 後は複数子どもデータは保持し、相談する1人を選択
 
 ### プラン・課金
 - Free / Lite / Pro の3プラン
-- Stripe によるサブスクリプション決済（Checkout）
-- Stripeポータル経由のプラン変更を自動反映
+- Stripe Checkout で新規契約・アップグレード
+- マイページ「お支払い管理」→ **Stripe Customer Portal**（プラン変更・解約）
+- Webhook でプランを自動反映
 - 支払い失敗時のリトライ猶予（即時ダウングレードなし）
-- 解約・リトライ全失敗時は自動でFreeにダウングレード
 
 ### 週次レポート（Proプラン）
 - 毎週月曜 AM8:00（JST）にVercel Cronで自動実行
@@ -41,7 +44,7 @@
 
 ### セキュリティ
 - RLSにより各ユーザーは自分のデータのみアクセス可能
-- `plan`列はクライアントから直接書き換え不可（列レベル権限）
+- `plan`列はクライアントから直接書き換え不可
 - 全APIでリクエストバリデーション・認証チェック
 
 ---
@@ -57,6 +60,7 @@
 | スタイル | Tailwind CSS v4 |
 | デプロイ | Vercel |
 | メール配信 | Resend（カスタムSMTP） |
+| テスト | Vitest（ユニットテスト） |
 
 ---
 
@@ -66,7 +70,7 @@
 |---|---|---|---|---|---|
 | Free | 無料 | 3回 | なし | なし | なし |
 | Lite | ¥980/月 | 無制限 | あり | なし | なし |
-| Pro | ¥2,980/月 | 無制限 | あり | あり（複数登録・切替） | あり |
+| Pro | ¥2,980/月 | 無制限 | あり | あり（複数登録・切替・関係性） | あり |
 
 ---
 
@@ -75,113 +79,78 @@
 ```
 src/
 ├── app/
-│   ├── page.tsx                 # チャット画面（メイン）
-│   ├── login/page.tsx           # ログイン（OTP）
-│   ├── onboarding/page.tsx      # 子ども情報登録・編集
-│   ├── account/
-│   │   ├── page.tsx             # マイページ
-│   │   └── ChildManager.tsx     # 子ども管理コンポーネント
+│   ├── page.tsx                      # チャット
+│   ├── login/                        # OTP ログイン
+│   ├── onboarding/                   # 子ども登録・編集・関係設定
+│   ├── account/                      # マイページ
 │   └── api/
-│       ├── chat/route.ts        # AIチャットAPI
-│       ├── checkout/route.ts    # Stripeチェックアウト
-│       ├── webhook/route.ts     # Stripe Webhook
-│       └── report/weekly/route.ts # 週次レポート生成
+│       ├── chat/                     # AI・メモリ再構築
+│       ├── checkout/                 # Stripe Checkout
+│       ├── billing-portal/           # Stripe Customer Portal
+│       ├── webhook/                  # Stripe Webhook
+│       └── report/weekly/            # 週次レポート Cron
 ├── features/
+│   ├── account/hooks/useAccountReturn.ts
 │   ├── billing/
-│   │   ├── plans.ts             # プラン定義
-│   │   ├── types.ts             # 型定義
-│   │   ├── hooks/useUserPlan.ts # プラン・使用回数管理
-│   │   └── components/UpgradeModal.tsx
-│   ├── chat/hooks/useChatHistory.ts
-│   └── child/hooks/useChildRedirect.ts
+│   ├── chat/
+│   └── child/                        # 関係性・削除・読み込み
 ├── lib/
-│   ├── supabase-browser.ts
-│   ├── supabase-server.ts
-│   ├── stripe.ts
-│   └── childAge.ts             # 月齢・年齢計算ユーティリティ
-└── hooks/
-    └── useAuthUserId.ts
+docs/
+│   └── CONSIDERATIONS.md             # 仕様・考慮漏れメモ
+supabase/migrations/
+│   ├── schema.sql                    # 新規環境用（この1ファイルのみ）
+│   └── README.md                     # 既存環境向け注意
 ```
 
 ---
 
 ## セットアップ
 
-### 1. 依存パッケージをインストール
+### 1. 依存パッケージ
 
 ```bash
 npm install
 ```
 
-### 2. 環境変数を設定
+### 2. 環境変数
 
-`.env.local` を作成して以下を設定してください。
+`.env.example` をコピーして `.env.local` を作成してください。
 
-```env
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# Stripe
-STRIPE_SECRET_KEY=sk_...
-STRIPE_PRICE_ID_LITE=price_...   # Stripeダッシュボードの価格ID
-STRIPE_PRICE_ID_PRO=price_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-
-# アプリURL（本番はhttps://your-domain.vercel.app）
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-
-# Vercel Cron 認証（任意の文字列）
-CRON_SECRET=任意のランダム文字列
+```bash
+cp .env.example .env.local
 ```
 
-### 3. Supabase のマイグレーションを実行
+### 3. Supabase
 
-Supabase Dashboard → SQL Editor で以下の**1ファイルだけ**実行してください。
+**新規環境**では `supabase/migrations/schema.sql` を SQL Editor で**1回だけ**実行します。
 
-```
-supabase/migrations/schema.sql
-```
+既に本番で個別マイグレーションを実行済みの場合は [supabase/migrations/README.md](./supabase/migrations/README.md) を参照してください。
 
-全テーブル・RLS・トリガーが一括で作成されます。
+### 4. Supabase 認証
 
-### 4. Supabase 認証の設定
+- **Site URL** / **Redirect URLs**: `https://your-domain.vercel.app/auth/callback`
+- Email OTP（6桁推奨）
 
-Supabase Dashboard → Authentication → URL Configuration:
+### 5. Stripe
 
-- **Site URL**: `https://your-domain.vercel.app`
-- **Redirect URLs**: `https://your-domain.vercel.app/auth/callback`
-
-Authentication → Email → OTP の有効期限・桁数（6桁推奨）。
-
-### 5. Stripe の設定
-
-1. **商品・価格**を作成し、各価格IDを環境変数に設定
-2. **Webhook エンドポイント**を登録: `https://your-domain.vercel.app/api/webhook`
-3. Webhook に以下のイベントを追加:
+1. Lite / Pro の Price を作成し環境変数に設定
+2. Webhook: `https://your-domain.vercel.app/api/webhook`
    - `checkout.session.completed`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_failed`
-4. **Customer Portal**（設定 → 請求 → カスタマーポータル）を有効化:
-   - プラン変更（Lite / Pro の Price を追加）
-   - 解約を許可
-   - 戻り先 URL はアプリ側で `/account` を指定（API から設定）
+3. **Customer Portal** を有効化（プラン変更・解約）
+   - Lite / Pro の Price を変更可能プランに追加
 
-マイページの「お支払い管理を開く」からポータルに遷移し、ダウングレード・解約ができます。
+詳細は README 下部の Webhook 表および運用時の [docs/CONSIDERATIONS.md](./docs/CONSIDERATIONS.md) を参照。
 
-### 6. 開発サーバーを起動
+### 6. 起動
 
 ```bash
 npm run dev
 ```
 
-Stripe Webhook のローカルテストは Stripe CLI を使用してください。
+ローカル Webhook:
 
 ```bash
 stripe listen --forward-to localhost:3000/api/webhook
@@ -189,22 +158,45 @@ stripe listen --forward-to localhost:3000/api/webhook
 
 ---
 
-## デプロイ（Vercel）
+## テスト
 
-1. GitHub リポジトリを Vercel に連携
-2. Environment Variables に上記の環境変数をすべて設定
-3. `vercel.json` に定義した Cron Job（週次レポート: 毎週日曜 23:00 UTC = 月曜 8:00 JST）が自動で有効になります
+純粋関数（会話順序・関係性の解決など）のユニットテストです。
+
+```bash
+npm test
+```
+
+ウォッチモード:
+
+```bash
+npm run test:watch
+```
 
 ---
 
-## Stripe Webhook のイベント処理
+## デプロイ（Vercel）
+
+1. GitHub リポジトリを連携
+2. `.env.example` の変数をすべて設定
+3. Cron（週次レポート）: `vercel.json` 参照（日曜 23:00 UTC = 月曜 8:00 JST）
+
+---
+
+## Stripe Webhook
 
 | イベント | 処理 |
 |---|---|
-| `checkout.session.completed` | プランを Lite/Pro に更新 |
-| `customer.subscription.updated` | Stripeポータルでのプラン変更を反映。`past_due`/`unpaid` でFreeにダウングレード |
-| `customer.subscription.deleted` | Freeにダウングレード |
-| `invoice.payment_failed` | ログのみ（リトライ猶予中はダウングレードしない） |
+| `checkout.session.completed` | Lite/Pro に更新、`stripe_customer_id` 保存 |
+| `customer.subscription.updated` | ポータルでの変更を反映。滞納時 Free |
+| `customer.subscription.deleted` | Free にダウングレード |
+| `invoice.payment_failed` | ログのみ（リトライ猶予） |
+
+---
+
+## ドキュメント
+
+- [docs/CONSIDERATIONS.md](./docs/CONSIDERATIONS.md) — 仕様・既知の挙動・運用メモ
+- [supabase/migrations/README.md](./supabase/migrations/README.md) — DB マイグレーション方針
 
 ---
 

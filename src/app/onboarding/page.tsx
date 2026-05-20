@@ -567,8 +567,8 @@ function OnboardingForm() {
               const targetId = newChildId ?? childIdParam;
               if (!targetId) return;
               const targetChild = existingChildren.find((c) => c.id === targetId);
-              const targetGender = gender ?? targetChild?.gender;
-              if (!targetGender) return;
+              const targetGender =
+                gender ?? targetChild?.gender ?? ("other" as Gender);
               setSaving(true);
               setError("");
               await saveSiblingRelations(targetId, targetGender, relations);
