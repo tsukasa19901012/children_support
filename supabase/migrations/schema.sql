@@ -185,7 +185,10 @@ create table if not exists public.child_sibling_relations (
   child_id    uuid        not null references public.children(id) on delete cascade,
   sibling_id  uuid        not null references public.children(id) on delete cascade,
   relation    text        not null check (relation in (
-    'older_brother', 'older_sister', 'younger_brother', 'younger_sister', 'twin'
+    'older_brother', 'older_sister', 'younger_brother', 'younger_sister', 'twin',
+    'cousin_older', 'cousin_younger',
+    'second_cousin_older', 'second_cousin_younger',
+    'friend'
   )),
   created_at  timestamptz not null default now(),
   unique (child_id, sibling_id),

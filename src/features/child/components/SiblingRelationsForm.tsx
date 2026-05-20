@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
-  SIBLING_RELATION_OPTIONS,
-  type SiblingRelation,
+  RELATION_OPTION_GROUPS,
+  type ChildPeerRelation,
 } from "../types/siblingRelation";
 
 export type SiblingTarget = {
@@ -14,10 +14,10 @@ export type SiblingTarget = {
 type Props = {
   childName: string;
   siblings: SiblingTarget[];
-  initialRelations?: Record<string, SiblingRelation>;
+  initialRelations?: Record<string, ChildPeerRelation>;
   saving: boolean;
   error?: string;
-  onSubmit: (relations: Record<string, SiblingRelation>) => void;
+  onSubmit: (relations: Record<string, ChildPeerRelation>) => void;
   onBack?: () => void;
   onSkip?: () => void;
   submitLabel?: string;
@@ -34,9 +34,9 @@ export function SiblingRelationsForm({
   onSkip,
   submitLabel = "保存して完了",
 }: Props) {
-  const [relations, setRelations] = useState<Record<string, SiblingRelation>>(
+  const [relations, setRelations] = useState<Record<string, ChildPeerRelation>>(
     () => {
-      const init: Record<string, SiblingRelation> = {};
+      const init: Record<string, ChildPeerRelation> = {};
       for (const s of siblings) {
         init[s.id] = initialRelations[s.id] ?? "younger_sister";
       }
@@ -52,10 +52,10 @@ export function SiblingRelationsForm({
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8">
       <p className="text-base font-semibold text-gray-800 mb-1">
-        {childName}ちゃんのきょうだいは？
+        {childName}ちゃんとの関係は？
       </p>
       <p className="text-xs text-gray-400 mb-5 leading-relaxed">
-        きょうだい同士の相談（嫉妬・喧嘩など）のとき、AIが関係を踏まえて答えます
+        きょうだい・いとこ・再従兄弟・友達など。友人関係の相談にも使います
       </p>
 
       <div className="space-y-4 mb-5">
@@ -69,16 +69,20 @@ export function SiblingRelationsForm({
               onChange={(e) =>
                 setRelations((prev) => ({
                   ...prev,
-                  [sibling.id]: e.target.value as SiblingRelation,
+                  [sibling.id]: e.target.value as ChildPeerRelation,
                 }))
               }
               disabled={saving}
               className="w-full border border-gray-300 rounded-xl px-3 py-3 outline-none focus:border-blue-400 bg-white"
             >
-              {SIBLING_RELATION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+              {RELATION_OPTION_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

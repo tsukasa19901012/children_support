@@ -2,18 +2,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   inverseRelation,
   type ChildGender,
-  type SiblingRelation,
+  type ChildPeerRelation,
 } from "../types/siblingRelation";
 
 export type SiblingRelationRow = {
   child_id: string;
   sibling_id: string;
-  relation: SiblingRelation;
+  relation: ChildPeerRelation;
 };
 
 export type SiblingLinkInput = {
   siblingId: string;
-  relation: SiblingRelation;
+  relation: ChildPeerRelation;
 };
 
 /** ある子どもに紐づくきょうだい関係をすべて置き換え（双方向を保存） */
@@ -38,7 +38,7 @@ export async function saveChildSiblingRelations(
     user_id: string;
     child_id: string;
     sibling_id: string;
-    relation: SiblingRelation;
+    relation: ChildPeerRelation;
   }[] = [];
 
   for (const { siblingId, relation } of links) {

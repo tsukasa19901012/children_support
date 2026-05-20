@@ -8,7 +8,7 @@ import {
   createServiceSupabaseClient,
 } from "../../../lib/supabase-server";
 import { buildSiblingPromptBlock } from "../../../features/child/lib/buildSiblingPrompt";
-import type { SiblingRelation } from "../../../features/child/types/siblingRelation";
+import type { ChildPeerRelation } from "../../../features/child/types/siblingRelation";
 
 type Message = {
   role: "user" | "assistant";
@@ -99,7 +99,7 @@ async function fetchSiblingPromptBlock(
       return {
         name: s.name,
         birthday: s.birthday,
-        relation: r.relation as SiblingRelation,
+        relation: r.relation as ChildPeerRelation,
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);

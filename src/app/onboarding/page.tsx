@@ -201,7 +201,7 @@ function OnboardingForm() {
     );
 
     if (saveErr) {
-      setError("きょうだいの関係の保存に失敗しました。");
+      setError("関係の保存に失敗しました。");
       setSaving(false);
       return;
     }
@@ -305,14 +305,14 @@ function OnboardingForm() {
   const stepIndex = steps.indexOf(step);
 
   const title = isSiblingsOnly
-    ? "きょうだいの関係"
+    ? "お子さん同士の関係"
     : isEdit
       ? "子ども情報を編集"
       : isAdd
         ? "子どもを追加"
         : "はじめまして";
   const subtitle = isSiblingsOnly
-    ? "きょうだい同士の相談に使います"
+    ? "きょうだい・友達などの相談に使います"
     : isEdit
       ? "情報を更新してください"
       : "お子さんのことを教えてください";

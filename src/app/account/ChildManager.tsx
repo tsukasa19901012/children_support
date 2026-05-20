@@ -69,7 +69,7 @@ export function ChildManager({
     if (rels.length === 0) return null;
     return rels
       .map((r) => {
-        const name = childNameMap.get(r.sibling_id) ?? "きょうだい";
+        const name = childNameMap.get(r.sibling_id) ?? "お子さん";
         return `${relationLabel(r.relation as SiblingRelation)}の${name}ちゃん`;
       })
       .join("、");
@@ -124,7 +124,7 @@ export function ChildManager({
                   }
                   className="text-xs text-violet-500 hover:text-violet-700 px-2 py-1 rounded-lg hover:bg-violet-50"
                 >
-                  きょうだい
+                  関係
                 </button>
               )}
               <button
