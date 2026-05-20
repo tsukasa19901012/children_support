@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
@@ -44,9 +44,16 @@ export function ChildManager({
   siblingRelations,
 }: Props) {
   const router = useRouter();
-  const [children] = useState(initialChildren);
+  const [children, setChildren] = useState(initialChildren);
   const [activeChildId, setActiveChildId] = useState(initialActiveChildId);
+  const [relations, setRelations] = useState(siblingRelations);
   const [switching, setSwitching] = useState<string | null>(null);
+
+  useEffect(() => {
+    setChildren(initialChildren);
+    setActiveChildId(initialActiveChildId);
+    setRelations(siblingRelations);
+  }, [initialChildren, initialActiveChildId, siblingRelations]);
 
   const handleSwitch = async (childId: string) => {
     setSwitching(childId);
@@ -65,7 +72,7 @@ export function ChildManager({
   const childNameMap = new Map(children.map((c) => [c.id, c.name]));
 
   const siblingSummary = (childId: string): string | null => {
-    const rels = siblingRelations.filter((r) => r.child_id === childId);
+    const rels = relations.filter((r) => r.child_id === childId);
     if (rels.length === 0) return null;
     return rels
       .map((r) => {

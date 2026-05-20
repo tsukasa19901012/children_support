@@ -168,9 +168,17 @@ function OnboardingForm() {
 
   const handleBirthdayNext = () => setStep("gender");
 
+  const goToAccount = () => {
+    router.replace("/account");
+    router.refresh();
+  };
+
   const finishRedirect = () => {
-    if (isAdd || isSiblingsOnly) router.replace("/account");
-    else router.replace("/");
+    if (isAdd || isSiblingsOnly) goToAccount();
+    else {
+      router.replace("/");
+      router.refresh();
+    }
   };
 
   const saveSiblingRelations = async (
@@ -245,7 +253,7 @@ function OnboardingForm() {
         setError("保存に失敗しました。");
         return;
       }
-      router.replace("/account");
+      goToAccount();
       return;
     }
 
@@ -334,7 +342,7 @@ function OnboardingForm() {
         </p>
         <button
           type="button"
-          onClick={() => router.replace("/account")}
+          onClick={goToAccount}
           className="text-sm text-blue-500 underline"
         >
           マイページへ戻る
@@ -562,9 +570,7 @@ function OnboardingForm() {
             }}
             onSkip={isAdd ? () => finishRedirect() : undefined}
             onBack={
-              isSiblingsOnly
-                ? () => router.replace("/account")
-                : () => setStep("gender")
+              isSiblingsOnly ? goToAccount : () => setStep("gender")
             }
           />
         )}

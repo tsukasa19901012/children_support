@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "../../lib/supabase-server";
 import { getPlan } from "../../features/billing/plans";
