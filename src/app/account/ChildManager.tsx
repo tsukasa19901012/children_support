@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
+import {
+  ACCOUNT_RELOAD_CHILDREN_KEY,
+  markAccountReturnStack,
+} from "../../features/account/hooks/useAccountReturn";
+import {
+  loadAccountChildren,
+  type AccountChildRow,
+  type AccountSiblingRelationRow,
+} from "../../features/child/lib/loadAccountChildren";
 import {
   relationLabel,
   type SiblingRelation,
@@ -11,18 +20,8 @@ import {
 import { DeleteChildConfirmDialog } from "../../features/child/components/DeleteChildConfirmDialog";
 import { deleteChild } from "../../features/child/lib/deleteChild";
 
-export type ChildRow = {
-  id: string;
-  name: string;
-  birthday: string;
-  gender: string | null;
-};
-
-type SiblingRelationRow = {
-  child_id: string;
-  sibling_id: string;
-  relation: string;
-};
+export type ChildRow = AccountChildRow;
+type SiblingRelationRow = AccountSiblingRelationRow;
 
 type Props = {
   isPro: boolean;
@@ -49,6 +48,7 @@ export function ChildManager({
   siblingRelations,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const [children, setChildren] = useState(initialChildren);
   const [activeChildId, setActiveChildId] = useState(initialActiveChildId);
   const [relations, setRelations] = useState(siblingRelations);
@@ -62,6 +62,26 @@ export function ChildManager({
     setActiveChildId(initialActiveChildId);
     setRelations(siblingRelations);
   }, [initialChildren, initialActiveChildId, siblingRelations]);
+
+  const reloadChildren = useCallback(async () => {
+    const supabase = createClient();
+    const data = await loadAccountChildren(supabase, userId);
+    setChildren(data.children);
+    setActiveChildId(data.activeChildId);
+    setRelations(data.siblingRelations);
+  }, [userId]);
+
+  useEffect(() => {
+    if (pathname !== "/account") return;
+    if (sessionStorage.getItem(ACCOUNT_RELOAD_CHILDREN_KEY) !== "1") return;
+    sessionStorage.removeItem(ACCOUNT_RELOAD_CHILDREN_KEY);
+    void reloadChildren();
+  }, [pathname, reloadChildren]);
+
+  const goToOnboarding = (path: string) => {
+    markAccountReturnStack();
+    router.push(path);
+  };
 
   const handleSwitch = async (childId: string) => {
     setSwitching(childId);
@@ -193,7 +213,9 @@ export function ChildManager({
                 <button
                   type="button"
                   onClick={() =>
-                    router.push(`/onboarding?mode=siblings&childId=${child.id}`)
+                    goToOnboarding(
+                      `/onboarding?mode=siblings&childId=${child.id}`
+                    )
                   }
                   className={`${actionBtn} text-violet-600 bg-violet-50 hover:bg-violet-100`}
                 >
@@ -202,7 +224,9 @@ export function ChildManager({
               )}
               <button
                 type="button"
-                onClick={() => router.push(`/onboarding?mode=edit&childId=${child.id}`)}
+                onClick={() =>
+                  goToOnboarding(`/onboarding?mode=edit&childId=${child.id}`)
+                }
                 className={`${actionBtn} text-gray-700 bg-gray-50 hover:bg-gray-100`}
               >
                 編集
@@ -241,7 +265,7 @@ export function ChildManager({
       {isPro && (
         <button
           type="button"
-          onClick={() => router.push("/onboarding?mode=add")}
+          onClick={() => goToOnboarding("/onboarding?mode=add")}
           className="w-full flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-2xl py-3 text-sm text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
         >
           <span className="text-lg leading-none">+</span>

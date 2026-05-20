@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAccountReturn } from "../../features/account/hooks/useAccountReturn";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
 import { SiblingRelationsForm } from "../../features/child/components/SiblingRelationsForm";
@@ -55,6 +56,7 @@ function isFutureDate(year: number, month: number, day: number) {
 
 function OnboardingForm() {
   const router = useRouter();
+  const returnToAccount = useAccountReturn();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   const childIdParam = searchParams.get("childId");
@@ -175,13 +177,8 @@ function OnboardingForm() {
 
   const handleBirthdayNext = () => setStep("gender");
 
-  const goToAccount = () => {
-    router.replace("/account");
-    router.refresh();
-  };
-
   const finishRedirect = () => {
-    if (isAdd || isSiblingsOnly) goToAccount();
+    if (isAdd || isSiblingsOnly) returnToAccount(true);
     else {
       router.replace("/");
       router.refresh();
@@ -265,7 +262,7 @@ function OnboardingForm() {
         setError("保存に失敗しました。");
         return;
       }
-      goToAccount();
+      returnToAccount(true);
       return;
     }
 
@@ -350,7 +347,7 @@ function OnboardingForm() {
         </p>
         <button
           type="button"
-          onClick={goToAccount}
+          onClick={() => returnToAccount(false)}
           className="text-sm text-blue-500 underline"
         >
           マイページへ戻る
@@ -415,7 +412,7 @@ function OnboardingForm() {
             {backPath && (
               <button
                 type="button"
-                onClick={() => router.replace(backPath)}
+                onClick={() => returnToAccount(false)}
                 className="w-full text-xs text-gray-400 underline mt-3"
               >
                 キャンセル
@@ -578,7 +575,7 @@ function OnboardingForm() {
             }}
             onSkip={isAdd ? () => finishRedirect() : undefined}
             onBack={
-              isSiblingsOnly ? goToAccount : () => setStep("gender")
+              isSiblingsOnly ? () => returnToAccount(false) : () => setStep("gender")
             }
           />
         )}
