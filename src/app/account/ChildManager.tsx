@@ -109,16 +109,14 @@ export function ChildManager({
 
   const childNameMap = new Map(children.map((c) => [c.id, c.name]));
 
-  const siblingSummary = (childId: string): string | null => {
-    const rels = relations.filter((r) => r.child_id === childId);
-    if (rels.length === 0) return null;
-    return rels
-      .map((r) => {
-        const name = childNameMap.get(r.sibling_id) ?? "お子さん";
-        return `${relationLabel(r.relation as SiblingRelation)}の${name}ちゃん`;
-      })
-      .join("、");
-  };
+  const peerRelations = (childId: string) =>
+    relations
+      .filter((r) => r.child_id === childId)
+      .map((r) => ({
+        key: r.sibling_id,
+        relation: relationLabel(r.relation as SiblingRelation),
+        name: childNameMap.get(r.sibling_id) ?? "お子さん",
+      }));
 
   return (
     <div className="space-y-3">
@@ -136,13 +134,13 @@ export function ChildManager({
         return (
           <div
             key={child.id}
-            className={`flex items-center justify-between rounded-2xl border px-4 py-3 transition-colors ${
+            className={`flex items-start justify-between rounded-2xl border px-4 py-3 transition-colors ${
               isActive ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-white"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "bg-blue-500" : "bg-gray-300"}`} />
-              <div>
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <div className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${isActive ? "bg-blue-500" : "bg-gray-300"}`} />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800">
                   {child.name}
                   {child.gender && (
@@ -152,15 +150,27 @@ export function ChildManager({
                   )}
                 </p>
                 <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
-                {isPro && hasMultiple && siblingSummary(child.id) && (
-                  <p className="text-xs text-violet-600 mt-0.5">
-                    {siblingSummary(child.id)}
-                  </p>
+                {isPro && hasMultiple && peerRelations(child.id).length > 0 && (
+                  <ul className="mt-2 space-y-1" aria-label="登録されている関係">
+                    {peerRelations(child.id).map((peer) => (
+                      <li
+                        key={peer.key}
+                        className="flex items-baseline gap-1.5 text-xs leading-snug"
+                      >
+                        <span className="shrink-0 rounded-md bg-violet-100 text-violet-700 px-1.5 py-0.5 text-[10px] font-medium">
+                          {peer.relation}
+                        </span>
+                        <span className="text-gray-600 truncate">
+                          {peer.name}ちゃん
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 pt-0.5">
               {isPro && hasMultiple && (
                 <button
                   type="button"
