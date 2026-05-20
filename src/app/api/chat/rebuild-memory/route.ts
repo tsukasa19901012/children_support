@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessages";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { buildRebuildMemoryPrompt } from "../../../../lib/childMemory";
 import type { PlanId } from "../../../../features/billing/types";
@@ -46,13 +47,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "子ども情報が見つかりません。" }, { status: 404 });
     }
 
-    const { data: messages } = await db
+    const { data: rawMessages } = await db
       .from("messages")
-      .select("role, content")
+      .select("role, content, created_at")
       .eq("user_id", user.id)
       .eq("child_id", childId)
       .order("created_at", { ascending: true })
+      .order("role", { ascending: false })
       .limit(MAX_REBUILD_MESSAGES);
+
+    const messages = rawMessages
+      ? sortMessagesByChatOrder(rawMessages)
+      : null;
 
     // 会話がなければメモリをクリア
     if (!messages || messages.length === 0) {

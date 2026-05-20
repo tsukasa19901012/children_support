@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../../lib/supabase-browser";
+import { sortMessagesByChatOrder } from "../lib/sortMessages";
 
 export type ChatMessage = {
   role: "user" | "ai";
@@ -49,10 +50,11 @@ export const useChatHistory = (
         const supabase = createClient();
         let query = supabase
           .from("messages")
-          .select("id, role, content")
+          .select("id, role, content, created_at")
           .eq("user_id", userId)
           .eq("child_id", childId)   // 子どもごとに履歴を分ける
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: true })
+          .order("role", { ascending: false });
 
         if (historyDays !== null) {
           const since = new Date(Date.now() - historyDays * 24 * 60 * 60 * 1000).toISOString();
@@ -68,7 +70,8 @@ export const useChatHistory = (
         }
 
         if (data && data.length > 0) {
-          const history: ChatMessage[] = data.map((row) => ({
+          const sorted = sortMessagesByChatOrder(data);
+          const history: ChatMessage[] = sorted.map((row) => ({
             id: row.id,
             role: row.role === "assistant" ? "ai" : ("user" as const),
             text: row.content,

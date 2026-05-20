@@ -226,18 +226,34 @@ async function saveMessages(
 ): Promise<SavedMessageIds | null> {
   try {
     const db = createServiceSupabaseClient();
-    const { data, error } = await db.from("messages").insert([
-      { user_id: userId, child_id: childId ?? null, role: "user",      content: userContent },
-      { user_id: userId, child_id: childId ?? null, role: "assistant", content: assistantContent },
-    ]).select("id, role");
-    if (error || !data || data.length < 2) {
-      console.warn("[/api/chat] messages保存失敗（非致命的）:", error?.message);
+    const base = { user_id: userId, child_id: childId ?? null };
+
+    const { data: userRow, error: userError } = await db
+      .from("messages")
+      .insert({ ...base, role: "user", content: userContent })
+      .select("id")
+      .single();
+
+    if (userError || !userRow) {
+      console.warn("[/api/chat] userメッセージ保存失敗:", userError?.message);
       return null;
     }
-    const userRow = data.find((r) => r.role === "user");
-    const assistantRow = data.find((r) => r.role === "assistant");
-    if (!userRow || !assistantRow) return null;
-    return { userMessageId: userRow.id, assistantMessageId: assistantRow.id };
+
+    const { data: assistantRow, error: assistantError } = await db
+      .from("messages")
+      .insert({ ...base, role: "assistant", content: assistantContent })
+      .select("id")
+      .single();
+
+    if (assistantError || !assistantRow) {
+      console.warn("[/api/chat] assistantメッセージ保存失敗:", assistantError?.message);
+      return null;
+    }
+
+    return {
+      userMessageId: userRow.id,
+      assistantMessageId: assistantRow.id,
+    };
   } catch (err) {
     console.warn("[/api/chat] messages保存例外（非致命的）:", err);
     return null;

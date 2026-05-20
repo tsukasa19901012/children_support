@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessages";
 import { createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { formatAge } from "../../../../lib/childAge";
 
@@ -100,14 +101,19 @@ export async function POST(request: NextRequest) {
       const ageText = formatAge(child.birthday);
 
       // 今週の子ども固有のメッセージを取得（最大50件）
-      const { data: weekMessages } = await db
+      const { data: rawWeekMessages } = await db
         .from("messages")
-        .select("role, content")
+        .select("role, content, created_at")
         .eq("user_id", user.id)
         .eq("child_id", child.id)   // 子ども単位でフィルタ
         .gte("created_at", oneWeekAgo)
         .order("created_at", { ascending: true })
+        .order("role", { ascending: false })
         .limit(50);
+
+      const weekMessages = rawWeekMessages
+        ? sortMessagesByChatOrder(rawWeekMessages)
+        : null;
 
       // OpenAIでレポート生成
       const completion = await openai.chat.completions.create({
