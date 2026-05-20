@@ -8,6 +8,8 @@ import {
   relationLabel,
   type SiblingRelation,
 } from "../../features/child/types/siblingRelation";
+import { DeleteChildConfirmDialog } from "../../features/child/components/DeleteChildConfirmDialog";
+import { deleteChild } from "../../features/child/lib/deleteChild";
 
 export type ChildRow = {
   id: string;
@@ -48,6 +50,9 @@ export function ChildManager({
   const [activeChildId, setActiveChildId] = useState(initialActiveChildId);
   const [relations, setRelations] = useState(siblingRelations);
   const [switching, setSwitching] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ChildRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     setChildren(initialChildren);
@@ -67,7 +72,40 @@ export function ChildManager({
   };
 
   const hasMultiple = children.length > 1;
+  const canDelete = children.length > 1;
   const needsSelection = !isPro && hasMultiple;
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || !canDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    const supabase = createClient();
+    const { error } = await deleteChild(
+      supabase,
+      userId,
+      deleteTarget.id,
+      children.length
+    );
+    if (error) {
+      setDeleteError(error);
+      setDeleting(false);
+      return;
+    }
+    const remaining = children.filter((c) => c.id !== deleteTarget.id);
+    setChildren(remaining);
+    setRelations((prev) =>
+      prev.filter(
+        (r) =>
+          r.child_id !== deleteTarget.id && r.sibling_id !== deleteTarget.id
+      )
+    );
+    if (activeChildId === deleteTarget.id) {
+      setActiveChildId(remaining[0]?.id ?? null);
+    }
+    setDeleteTarget(null);
+    setDeleting(false);
+    router.refresh();
+  };
 
   const childNameMap = new Map(children.map((c) => [c.id, c.name]));
 
@@ -142,6 +180,19 @@ export function ChildManager({
                 編集
               </button>
 
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteError("");
+                    setDeleteTarget(child);
+                  }}
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50"
+                >
+                  削除
+                </button>
+              )}
+
               {!isActive && (
                 <button
                   type="button"
@@ -178,6 +229,25 @@ export function ChildManager({
         <p className="text-xs text-center text-gray-400 pt-1">
           Proプランにアップグレードするとすべてのお子さんに同時対応できます
         </p>
+      )}
+
+      {!canDelete && children.length === 1 && (
+        <p className="text-xs text-center text-gray-400 pt-1">
+          お子さんが1人のときは削除できません
+        </p>
+      )}
+
+      {deleteError && (
+        <p className="text-xs text-center text-red-500">{deleteError}</p>
+      )}
+
+      {deleteTarget && (
+        <DeleteChildConfirmDialog
+          childName={deleteTarget.name}
+          deleting={deleting}
+          onConfirm={confirmDelete}
+          onCancel={() => !deleting && setDeleteTarget(null)}
+        />
       )}
     </div>
   );

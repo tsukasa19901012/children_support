@@ -73,6 +73,35 @@ create policy "children: update own"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+create policy "children: delete own"
+  on public.children for delete
+  using (user_id = auth.uid());
+
+create or replace function public.prevent_last_child_delete()
+returns trigger
+language plpgsql
+security definer
+as $$
+declare
+  remaining int;
+begin
+  select count(*) into remaining
+  from public.children
+  where user_id = OLD.user_id
+    and id <> OLD.id;
+
+  if remaining < 1 then
+    raise exception '最後のお子さんは削除できません';
+  end if;
+
+  return OLD;
+end;
+$$;
+
+create trigger prevent_last_child_delete_trigger
+  before delete on public.children
+  for each row execute function public.prevent_last_child_delete();
+
 
 -- ────────────────────────────────────────
 -- 4. users.active_child_id に FK を追加
