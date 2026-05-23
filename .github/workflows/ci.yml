@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  vercel-status:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Vercel deployment status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="${{ github.sha }}"
+          repo="${{ github.repository }}"
+          echo "Checking Vercel status for ${sha}..."
+
+          for i in $(seq 1 30); do
+            state=$(gh api "repos/${repo}/commits/${sha}/status" --jq '.state // "pending"')
+            vercel=$(gh api "repos/${repo}/commits/${sha}/status" --jq '.statuses[] | select(.context=="Vercel") | .state' 2>/dev/null || true)
+
+            echo "Attempt ${i}: overall=${state}, vercel=${vercel:-pending}"
+
+            if [ "$vercel" = "success" ]; then
+              echo "Vercel deployment succeeded."
+              exit 0
+            fi
+
+            if [ "$vercel" = "failure" ] || [ "$vercel" = "error" ]; then
+              echo "::error::Vercel deployment failed. Check https://vercel.com/dashboard for logs."
+              gh api "repos/${repo}/commits/${sha}/status" --jq '.statuses[] | select(.context=="Vercel") | {description, target_url}'
+              exit 1
+            fi
+
+            sleep 20
+          done
+
+          echo "::warning::Vercel status not confirmed within 10 minutes (may still be building)."

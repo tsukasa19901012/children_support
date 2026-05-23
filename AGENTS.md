@@ -29,8 +29,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 1. `.env.local` のキーを使用する。**秘密情報はコミットしない**
 2. 本番変更は「変更内容の要約 → 確認 → 実行」の順を守る
 3. 可能な限り `supabase/migrations/` に SQL を残し、Dashboard 直編集より再現可能な方法を優先
-4. 変更後は関連テスト（`npm test` / `npm run test:e2e`）を実行し、結果を報告する
+4. 変更後は関連テスト（`npm test` / `npm run test:e2e`）と **`npm run build`** を実行し、結果を報告する
 5. CLI 未ログイン時はログイン手順を案内するか、ユーザーに実行を依頼する
+6. **`main` へ push 後**は `npm run check:deploy` または `gh api .../commits/HEAD/status` で Vercel 結果を確認。失敗時は `npm run build` で再現し、原因を報告する
+
+## デプロイ監視
+
+- **CI**（`.github/workflows/ci.yml`）: push/PR で lint・test・build。`main` push 後に Vercel ステータスも確認
+- **ローカル確認**: `npm run build` が Vercel ビルドと同等（TypeScript 含む）
+- **手動確認**: `npm run check:deploy` — 直近コミットの Vercel 成功/失敗を表示
 
 ## 推奨フロー
 

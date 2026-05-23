@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
     "test:e2e:ui": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test --ui",
-    "supabase:apply-email-templates": "node scripts/apply-supabase-email-templates.mjs"
+    "supabase:apply-email-templates": "node scripts/apply-supabase-email-templates.mjs",
+    "check:deploy": "node scripts/check-deploy-status.mjs"
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.5.0",
