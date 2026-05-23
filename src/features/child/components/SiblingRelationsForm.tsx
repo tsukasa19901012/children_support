@@ -51,7 +51,7 @@ export function SiblingRelationsForm({
         {childName}ちゃんとの関係は？
       </p>
       <p className="text-xs text-gray-400 mb-5 leading-relaxed">
-        関係があるお子さんだけ選んでください。年上・年下は誕生日から自動で判断します。関係のない組み合わせは「登録しない」で大丈夫です。
+        きょうだい・いとこ・園の友達など、関係があるお子さんだけ選んでください。年上・年下は誕生日から自動で判断します。いま関係が薄い相手は「登録しない」で大丈夫です。
       </p>
 
       <div className="space-y-4 mb-5">

@@ -10,11 +10,13 @@ import {
   isChildAgeInRecommendedRange,
   RECOMMENDED_MAX_CHILD_AGE_YEARS,
 } from "../../lib/childAge";
+import { hasPlusAccess } from "../../features/billing/planAccess";
 import { SiblingRelationsForm } from "../../features/child/components/SiblingRelationsForm";
 import {
   peerLinksFromForm,
   saveChildSiblingRelations,
 } from "../../features/child/lib/siblingRelations";
+import { BRAND } from "../../lib/brand";
 import {
   RELATION_NONE,
   storedRelationToKind,
@@ -76,10 +78,10 @@ function OnboardingForm() {
   const [day, setDay] = useState<number>(1);
   const [gender, setGender] = useState<Gender | null>(null);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(isEdit || isSiblingsOnly);
+  const [loading, setLoading] = useState(isEdit || isSiblingsOnly || isAdd);
   const [error, setError] = useState("");
 
-  const [isPro, setIsPro] = useState(false);
+  const [hasPlus, setHasPlus] = useState(false);
   const [existingChildren, setExistingChildren] = useState<ExistingChild[]>([]);
   const [newChildId, setNewChildId] = useState<string | null>(
     isSiblingsOnly ? childIdParam : null
@@ -94,10 +96,16 @@ function OnboardingForm() {
       if (!user) return;
       const { data: userRow } = await supabase
         .from("users")
-        .select("plan")
+        .select("plan, created_at, trial_ends_at")
         .eq("id", user.id)
         .single();
-      setIsPro(userRow?.plan === "pro");
+      setHasPlus(
+        hasPlusAccess({
+          plan: userRow?.plan ?? "free",
+          created_at: userRow?.created_at ?? new Date().toISOString(),
+          trial_ends_at: userRow?.trial_ends_at ?? null,
+        })
+      );
 
       const { data: children } = await supabase
         .from("children")
@@ -129,9 +137,11 @@ function OnboardingForm() {
         }
         setInitialRelations(init);
         setLoading(false);
+      } else if (!isEdit) {
+        setLoading(false);
       }
     });
-  }, [isSiblingsOnly, childIdParam]);
+  }, [isSiblingsOnly, isEdit, isAdd, childIdParam]);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -174,7 +184,7 @@ function OnboardingForm() {
   }, [existingChildren, newChildId, childIdParam]);
 
   const needsSiblingStep =
-    isPro && siblingTargets.length > 0 && (isAdd || isSiblingsOnly);
+    hasPlus && siblingTargets.length > 0 && (isAdd || isSiblingsOnly);
 
   const handleNameNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,9 +295,9 @@ function OnboardingForm() {
 
     if (err || !child) {
       console.error("[onboarding] 子ども登録失敗:", err?.message);
-      if (err?.message?.includes("Pro プランへのアップグレード")) {
+      if (err?.message?.includes("Plusプランへのアップグレード")) {
         setError(
-          "複数の子どもを登録するにはProプランへのアップグレードが必要です。"
+          "複数の子どもを登録するにはPlusプランへのアップグレードが必要です。"
         );
       } else {
         setError(`保存に失敗しました。${err?.message ?? ""}`);
@@ -302,7 +312,7 @@ function OnboardingForm() {
       .eq("id", user.id);
 
     const others = existingChildren;
-    if (isPro && others.length > 0) {
+    if (hasPlus && others.length > 0) {
       const init: Record<string, PeerRelationFormValue> = {};
       for (const s of others) {
         init[s.id] = others.length === 1 ? "sibling" : RELATION_NONE;
@@ -324,23 +334,46 @@ function OnboardingForm() {
   const stepIndex = steps.indexOf(step);
 
   const title = isSiblingsOnly
-    ? "お子さん同士の関係"
+    ? "まわりのお子さんとの関係"
     : isEdit
-      ? "子ども情報を編集"
+      ? "お子さんの情報を編集"
       : isAdd
-        ? "子どもを追加"
-        : "はじめまして";
+        ? "お子さんを追加"
+        : `${BRAND.name}へようこそ`;
   const subtitle = isSiblingsOnly
-    ? "きょうだい・友達などの相談に使います"
+    ? "きょうだい・園の友達など。年上・年下は誕生日から自動で判断します"
     : isEdit
-      ? "情報を更新してください"
-      : "お子さんのことを教えてください";
+      ? "内容を更新してください"
+      : isAdd
+        ? "相談するお子さんを登録します"
+        : `${BRAND.audience}。まずは相談するお子さんから`;
   const backPath = isEdit || isAdd || isSiblingsOnly ? "/account" : undefined;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-dvh bg-gray-50">
         <p className="text-gray-400 text-sm">読み込み中...</p>
+      </div>
+    );
+  }
+
+  if (
+    !loading &&
+    !hasPlus &&
+    (isSiblingsOnly || (isAdd && existingChildren.length >= 1))
+  ) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-dvh bg-gray-50 px-6">
+        <p className="text-sm text-gray-500 mb-4 text-center leading-relaxed">
+          複数のお子さんの登録と関係の設定は、Plusプランまたは体験期間中のみご利用いただけます。
+        </p>
+        <button
+          type="button"
+          onClick={() => returnToAccount(false)}
+          className="text-sm text-blue-500 underline"
+        >
+          マイページへ戻る
+        </button>
       </div>
     );
   }
@@ -433,7 +466,7 @@ function OnboardingForm() {
               {name}ちゃんの誕生日は？
             </p>
             <p className="text-xs text-gray-400 mb-5 leading-relaxed">
-              0〜{RECOMMENDED_MAX_CHILD_AGE_YEARS}歳向けに最適化しています。7歳以上のお子さんもご利用いただけます。年齢は自動で計算されます。
+              0〜{RECOMMENDED_MAX_CHILD_AGE_YEARS}歳向けに最適化しています。7歳以上のお子さんもご利用いただけます。
             </p>
             <div className="flex gap-2 mb-4">
               <div className="flex-1">
@@ -509,7 +542,7 @@ function OnboardingForm() {
             </div>
             {isOutsideRecommended && (
               <p className="text-xs text-amber-700 mb-5 leading-relaxed">
-                0〜{RECOMMENDED_MAX_CHILD_AGE_YEARS}歳向けの内容です。7歳以上でもご利用いただけますが、発達段階に合わない回答になる場合があります。
+                0〜{RECOMMENDED_MAX_CHILD_AGE_YEARS}歳向けの内容です。7歳以上でもご利用いただけますが、発達段階に合わない場合があります。
               </p>
             )}
             {!isOutsideRecommended && <div className="mb-5" />}

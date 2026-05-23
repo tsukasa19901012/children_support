@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessages";
+import { hasPlusAccess, type UserBillingRow } from "../../../../features/billing/planAccess";
 import { createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { formatAge } from "../../../../lib/childAge";
 
@@ -17,8 +18,8 @@ const REPORT_PROMPT = (
 
   const memorySection = memory ? `\n【お子さんについての記録】\n${memory}\n` : "";
 
-  return `あなたは育児中の保護者に寄り添う温かいAIアシスタントです。
-以下の情報をもとに、週次の育児振り返りレポートをチャットメッセージとして作成してください。
+  return `あなたは、0〜6歳のお子さんを育てる家庭を支える育児相談のAIです。
+以下の情報をもとに、週次の育児振り返りレポートをチャットメッセージとして作成してください。うちの子のことを覚えたうえで、寄り添った振り返りを心がけてください。
 
 【お子さんの情報】
 名前: ${childName}（${ageText}）
@@ -48,9 +49,12 @@ ${conversationText || "（今週は相談がありませんでした）"}
 トーン：温かく、共感的、押しつけがましくない。専門用語を使わない。`;
 };
 
-/** Proプランユーザー全員の週次レポートをチャットに挿入する */
+function isWeeklyReportEligible(row: UserBillingRow): boolean {
+  return hasPlusAccess(row);
+}
+
+/** Plus・トライアル中ユーザーの週次レポートをチャットに挿入する */
 export async function POST(request: NextRequest) {
-  // Vercel Cron の認証チェック
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -62,14 +66,25 @@ export async function POST(request: NextRequest) {
 
   const db = createServiceSupabaseClient();
 
-  // Proプランユーザーを取得
-  const { data: proUsers, error: usersError } = await db
+  const { data: userRows, error: usersError } = await db
     .from("users")
-    .select("id")
-    .eq("plan", "pro");
+    .select("id, plan, created_at, trial_ends_at");
 
-  if (usersError || !proUsers?.length) {
-    console.log("[report/weekly] Proプランユーザーなし");
+  if (usersError) {
+    console.error("[report/weekly] ユーザー取得失敗:", usersError.message);
+    return NextResponse.json({ error: "ユーザー取得失敗" }, { status: 500 });
+  }
+
+  const eligibleUsers = (userRows ?? []).filter((u) =>
+    isWeeklyReportEligible({
+      plan: u.plan,
+      created_at: u.created_at,
+      trial_ends_at: u.trial_ends_at,
+    })
+  );
+
+  if (eligibleUsers.length === 0) {
+    console.log("[report/weekly] 対象ユーザーなし");
     return NextResponse.json({ sent: 0 });
   }
 
@@ -79,9 +94,8 @@ export async function POST(request: NextRequest) {
 
   let sentCount = 0;
 
-  for (const user of proUsers) {
+  for (const user of eligibleUsers) {
     try {
-      // active_child_id を優先し、未設定なら最初の子どもを使用
       const { data: userData } = await db
         .from("users")
         .select("active_child_id")
@@ -100,12 +114,11 @@ export async function POST(request: NextRequest) {
 
       const ageText = formatAge(child.birthday);
 
-      // 今週の子ども固有のメッセージを取得（最大50件）
       const { data: rawWeekMessages } = await db
         .from("messages")
         .select("role, content, created_at")
         .eq("user_id", user.id)
-        .eq("child_id", child.id)   // 子ども単位でフィルタ
+        .eq("child_id", child.id)
         .gte("created_at", oneWeekAgo)
         .order("created_at", { ascending: true })
         .order("role", { ascending: false })
@@ -115,7 +128,6 @@ export async function POST(request: NextRequest) {
         ? sortMessagesByChatOrder(rawWeekMessages)
         : null;
 
-      // OpenAIでレポート生成
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: REPORT_PROMPT(
@@ -130,11 +142,11 @@ export async function POST(request: NextRequest) {
       const reportText = completion.choices[0]?.message?.content?.trim();
       if (!reportText) continue;
 
-      // チャットにアシスタントメッセージとして挿入
       const { error: insertError } = await db
         .from("messages")
         .insert({
           user_id: user.id,
+          child_id: child.id,
           role: "assistant",
           content: reportText,
         });

@@ -6,6 +6,7 @@ import {
   loadChatHistoryCache,
   saveChatHistoryCache,
 } from "../chatHistoryCache";
+import { CHAT_GREETING } from "../../../lib/brand";
 import { sortMessagesByChatOrder } from "../lib/sortMessages";
 
 export type ChatMessage = {
@@ -17,7 +18,7 @@ export type ChatMessage = {
 
 const INITIAL_MESSAGE: ChatMessage = {
   role: "ai",
-  text: "こんにちは。育児の相談をどうぞ。",
+  text: CHAT_GREETING,
 };
 
 type UseChatHistoryResult = {
@@ -29,7 +30,7 @@ type UseChatHistoryResult = {
 
 /**
  * historyDays が null の場合は全件取得。
- * 数値の場合はその日数分のみ取得（Freeプランは7日間）。
+ * 数値の場合はその日数分のみ取得（Freeプランは14日間）。
  * アップグレード後は即座に全件が表示されるようになる。
  */
 export const useChatHistory = (

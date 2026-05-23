@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
-import { saveCachedPlan } from "../planCache";
-import type { PlanId } from "../types";
+import { saveCachedBilling } from "../planCache";
+import type { UserBillingRow } from "../planAccess";
 
-/** マイページ表示時にプランをキャッシュし、チャット遷移時のチラつきを防ぐ */
+/** マイページ表示時に課金状態をキャッシュし、チャット遷移時のチラつきを防ぐ */
 export function PlanCacheWriter({
   userId,
-  planId,
+  billingRow,
 }: {
   userId: string;
-  planId: PlanId;
+  billingRow: UserBillingRow;
 }) {
   useEffect(() => {
-    saveCachedPlan(userId, planId);
-  }, [userId, planId]);
+    saveCachedBilling(userId, billingRow);
+  }, [userId, billingRow]);
 
   return null;
 }

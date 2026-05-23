@@ -3,19 +3,13 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "../../../lib/stripe";
 import { getPlan } from "../../../features/billing/plans";
+import { getPlusStripePriceId } from "../../../features/billing/stripePrices";
 import {
   createServerSupabaseClient,
   createServiceSupabaseClient,
 } from "../../../lib/supabase-server";
-import type { PlanId } from "../../../features/billing/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-
-/** プランID → Stripe Price ID の対応（環境変数から取得） */
-const PRICE_ID_MAP: Record<string, string | undefined> = {
-  lite: process.env.STRIPE_PRICE_ID_LITE,
-  pro:  process.env.STRIPE_PRICE_ID_PRO,
-};
 
 export async function POST(request: NextRequest) {
   const stripe = getStripe();
@@ -26,7 +20,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ログイン確認
   const authClient = await createServerSupabaseClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) {
@@ -34,21 +27,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const planId: PlanId = body.planId;
-    const plan = getPlan(planId);
+    await request.json();
+    const plan = getPlan("plus");
+    const priceId = getPlusStripePriceId();
 
-    if (plan.id === "free") {
-      return NextResponse.json(
-        { error: "無料プランは選択できません。" },
-        { status: 400 }
-      );
-    }
-
-    const priceId = PRICE_ID_MAP[plan.id];
     if (!priceId) {
       return NextResponse.json(
-        { error: `${plan.name} の Price ID が未設定です。.env.local を確認してください。` },
+        {
+          error: `${plan.name} の Price ID が未設定です。STRIPE_PRICE_ID_PLUS を確認してください。`,
+        },
         { status: 400 }
       );
     }
@@ -71,12 +58,12 @@ export async function POST(request: NextRequest) {
         ? { customer: existingCustomerId }
         : { customer_email: user.email ?? undefined }),
       metadata: {
-        planId: plan.id,
+        planId: "plus",
         userId: user.id,
       },
       subscription_data: {
         metadata: {
-          planId: plan.id,
+          planId: "plus",
           userId: user.id,
         },
       },
@@ -84,7 +71,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    // JSON パースエラーも含めてここで捕捉
     console.error("[/api/checkout]", error);
     return NextResponse.json(
       { error: "決済セッションの作成に失敗しました。" },

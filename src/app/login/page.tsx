@@ -3,6 +3,7 @@
 import { Suspense, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
+import { BRAND } from "../../lib/brand";
 
 type Status = "idle" | "loading" | "code_sent" | "verifying" | "error";
 
@@ -103,8 +104,15 @@ function LoginForm() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">👶</div>
-          <h1 className="text-xl font-bold text-gray-800">育児AIチャット</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-bold text-gray-800">{BRAND.name}</h1>
+          <p className="text-xs text-gray-500 mt-1">{BRAND.subtitle}</p>
+          <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+            {BRAND.tagline}
+            <br />
+            <span className="text-gray-500">{BRAND.subtagline}</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-2">{BRAND.audience}</p>
+          <p className="text-sm text-gray-500 mt-3">
             {status === "code_sent" || status === "verifying"
               ? "確認コードを入力"
               : "メールアドレスでログイン"}

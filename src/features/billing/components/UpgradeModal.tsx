@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { PLANS } from "../plans";
-import type { Plan } from "../types";
+import { BRAND } from "../../../lib/brand";
+import { PLANS, getPlan } from "../plans";
 
 type Props = {
   onClose: () => void;
 };
 
 export function UpgradeModal({ onClose }: Props) {
-  const paidPlans = PLANS.filter((p) => p.id !== "free");
+  const plus = getPlan("plus");
 
   return (
     <div
@@ -20,27 +20,25 @@ export function UpgradeModal({ onClose }: Props) {
         className="w-full max-w-lg bg-white rounded-t-2xl flex flex-col max-h-[90dvh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 固定ヘッダー */}
         <div className="px-5 pt-5 shrink-0">
           <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-5" />
           <h2 className="text-base font-bold text-gray-800 mb-1">
-            プランをアップグレード
+            Plusプランにする
           </h2>
-          <p className="text-sm text-gray-500 mb-4">
-            無制限でAI育児相談をご利用いただけます。
+          <p className="text-sm text-gray-500 mb-1 leading-relaxed">
+            {BRAND.tagline}
+            <br />
+            {BRAND.subtagline}
+          </p>
+          <p className="text-xs text-gray-400 mb-4">
+            トライアル終了後も、うちの子の記憶を更新し続けられます
           </p>
         </div>
 
-        {/* スクロール可能なプランリスト */}
         <div className="flex-1 overflow-y-auto px-5 pb-2">
-          <div className="flex flex-col gap-3">
-            {paidPlans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} />
-            ))}
-          </div>
+          <PlanCard plan={plus} />
         </div>
 
-        {/* 固定フッター */}
         <div className="px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shrink-0 border-t border-gray-100">
           <button
             type="button"
@@ -55,10 +53,9 @@ export function UpgradeModal({ onClose }: Props) {
   );
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({ plan }: { plan: (typeof PLANS)[number] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isPro = plan.id === "pro";
 
   const handleSelect = async () => {
     setLoading(true);
@@ -67,7 +64,7 @@ function PlanCard({ plan }: { plan: Plan }) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: plan.id }),
+        body: JSON.stringify({ planId: "plus" }),
       });
       const data = await res.json();
 
@@ -76,7 +73,6 @@ function PlanCard({ plan }: { plan: Plan }) {
         return;
       }
 
-      // Stripe Checkout ページへリダイレクト
       window.location.href = data.url;
     } catch {
       setError("通信エラーが発生しました。");
@@ -86,17 +82,7 @@ function PlanCard({ plan }: { plan: Plan }) {
   };
 
   return (
-    <div
-      className={`relative rounded-2xl border p-4 ${
-        isPro ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
-      }`}
-    >
-      {isPro && (
-        <span className="absolute -top-2.5 left-4 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-          おすすめ
-        </span>
-      )}
-
+    <div className="relative rounded-2xl border border-blue-400 bg-blue-50 p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <span className="font-bold text-gray-800">{plan.name}</span>
@@ -127,13 +113,9 @@ function PlanCard({ plan }: { plan: Plan }) {
         type="button"
         onClick={handleSelect}
         disabled={loading}
-        className={`w-full text-center text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 ${
-          isPro
-            ? "bg-blue-500 hover:bg-blue-600 text-white"
-            : "bg-gray-100 hover:bg-gray-200 text-gray-800"
-        }`}
+        className="w-full text-center text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 bg-blue-500 hover:bg-blue-600 text-white"
       >
-        {loading ? "処理中..." : "このプランを選択"}
+        {loading ? "処理中..." : "Plusをはじめる"}
       </button>
     </div>
   );

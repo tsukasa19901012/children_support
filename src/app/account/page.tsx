@@ -4,17 +4,19 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "../../lib/supabase-server";
 import { getPlan } from "../../features/billing/plans";
+import { fetchUserBilling } from "../../features/billing/fetchUserBilling";
+import { normalizePlanId } from "../../features/billing/planAccess";
 import type { PlanId } from "../../features/billing/types";
 import { getJSTDayStartISO } from "../../lib/date";
 import { AccountActions } from "./AccountActions";
 import { ChildManager } from "./ChildManager";
 import { PlanCacheWriter } from "../../features/billing/components/PlanCacheWriter";
 import { ChildCacheWriter } from "../../features/child/components/ChildCacheWriter";
+import { BRAND } from "../../lib/brand";
 
 const PLAN_COLOR: Record<PlanId, string> = {
   free: "bg-gray-100 text-gray-700",
-  lite: "bg-blue-100 text-blue-700",
-  pro:  "bg-violet-100 text-violet-700",
+  plus: "bg-blue-100 text-blue-700",
 };
 
 async function fetchAccountData(userId: string) {
@@ -39,7 +41,7 @@ async function fetchAccountData(userId: string) {
       .eq("user_id", userId),
   ]);
 
-  const planId = (userRes.data?.plan as PlanId | null) ?? "free";
+  const planId = normalizePlanId(userRes.data?.plan as string | null);
   const children = childrenRes.data ?? [];
   const activeChildId =
     (userRes.data?.active_child_id as string | null) ??
@@ -62,15 +64,17 @@ export default async function AccountPage() {
 
   const { planId, todayUsage, children, activeChildId, siblingRelations } =
     await fetchAccountData(user.id);
+  const billing = await fetchUserBilling(user.id);
   const plan = getPlan(planId);
   const isFree = planId === "free";
-  const remaining = isFree && plan.dailyLimit !== null
-    ? Math.max(0, plan.dailyLimit - todayUsage)
-    : null;
+  const remaining =
+    !billing.hasPlusAccess && plan.dailyLimit !== null
+      ? Math.max(0, plan.dailyLimit - todayUsage)
+      : null;
 
   return (
     <div className="flex flex-col h-dvh bg-gray-50">
-      <PlanCacheWriter userId={user.id} planId={planId} />
+      <PlanCacheWriter userId={user.id} billingRow={billing.row} />
       <ChildCacheWriter
         userId={user.id}
         activeChildId={activeChildId}
@@ -84,7 +88,7 @@ export default async function AccountPage() {
         <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
           ← チャットに戻る
         </Link>
-        <span className="font-bold text-sm text-gray-800">マイページ</span>
+        <span className="font-bold text-sm text-gray-800">{BRAND.name}</span>
         <div className="w-16" />
       </header>
 
@@ -100,7 +104,11 @@ export default async function AccountPage() {
             </span>
           </div>
           <p className="text-xs text-gray-400 mb-3">
-            {isFree ? "無料プランをご利用中です" : "有料プランをご利用中です"}
+            {billing.isTrialActive
+              ? `体験期間中（あと${billing.trialDaysLeft}日）`
+              : isFree
+              ? "無料プランをご利用中です"
+              : "Plusプランをご利用中です"}
           </p>
           <ul className="space-y-1.5">
             {plan.features.map((f) => (
@@ -119,14 +127,14 @@ export default async function AccountPage() {
             <span className="text-gray-500">送信回数</span>
             <span className="font-semibold text-gray-800">
               {todayUsage}
-              {plan.dailyLimit !== null ? (
+              {!billing.hasPlusAccess && plan.dailyLimit !== null ? (
                 <span className="text-gray-400 font-normal"> / {plan.dailyLimit}回</span>
               ) : (
                 <span className="text-gray-400 font-normal"> 回（無制限）</span>
               )}
             </span>
           </div>
-          {isFree && remaining !== null && (
+          {!billing.hasPlusAccess && remaining !== null && (
             <div className="flex items-center justify-between text-sm mt-3 pt-3 border-t border-gray-100">
               <span className="text-gray-500">残り回数</span>
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -136,7 +144,7 @@ export default async function AccountPage() {
               </span>
             </div>
           )}
-          {!isFree && (
+          {billing.hasPlusAccess && (
             <div className="flex items-center justify-between text-sm mt-3 pt-3 border-t border-gray-100">
               <span className="text-gray-500">制限</span>
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
@@ -157,12 +165,18 @@ export default async function AccountPage() {
 
         {/* 子ども情報 */}
         <section className="bg-white rounded-xl border border-gray-100 p-4">
-          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さんの情報</h2>
-          {planId === "pro" && (
-            <p className="text-xs text-gray-400 mb-3">Proプランは複数のお子さんを登録できます</p>
+          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さんと、まわりの関係</h2>
+          {billing.hasPlusAccess ? (
+            <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+              お子さんを複数登録し、きょうだいや友達の関係を登録すると、より的確な相談ができます。
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+              Plusプランで、複数の子の登録と関係の登録、週次レポートが使えます。
+            </p>
           )}
           <ChildManager
-            isPro={planId === "pro"}
+            hasPlusFeatures={billing.hasPlusAccess}
             userId={user.id}
             initialChildren={children}
             initialActiveChildId={activeChildId}
@@ -170,7 +184,7 @@ export default async function AccountPage() {
           />
         </section>
 
-        <AccountActions planId={planId} />
+        <AccountActions planId={planId} hasPlusAccess={billing.hasPlusAccess} />
       </div>
       </main>
     </div>

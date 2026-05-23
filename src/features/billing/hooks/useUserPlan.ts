@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getPlan } from "../plans";
+import { type UserBillingRow } from "../planAccess";
 import {
+  deriveBillingUI,
   isPlanCacheFresh,
-  loadCachedPlan,
-  saveCachedPlan,
+  loadCachedBilling,
+  saveCachedBilling,
 } from "../planCache";
 import type { PlanId, UserPlan } from "../types";
 import { createClient } from "../../../lib/supabase-browser";
@@ -39,9 +41,28 @@ const saveUsage = (usage: StoredUsage): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(usage));
 };
 
+function applyBillingRow(
+  row: UserBillingRow,
+  setters: {
+    setPlanId: (v: PlanId) => void;
+    setHasPlus: (v: boolean) => void;
+    setTrialDaysLeft: (v: number) => void;
+    setCanUpdateMem: (v: boolean) => void;
+  }
+): void {
+  const ui = deriveBillingUI(row);
+  setters.setPlanId(ui.planId);
+  setters.setHasPlus(ui.hasPlusAccess);
+  setters.setTrialDaysLeft(ui.trialDaysLeft);
+  setters.setCanUpdateMem(ui.canUpdateMemory);
+}
+
 export const useUserPlan = (userId: string | null): UserPlan => {
   const [planId, setPlanId] = useState<PlanId>("free");
   const [planLoaded, setPlanLoaded] = useState(false);
+  const [hasPlus, setHasPlus] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(0);
+  const [canUpdateMem, setCanUpdateMem] = useState(false);
   const [usedToday, setUsedToday] = useState(0);
 
   useEffect(() => {
@@ -54,9 +75,16 @@ export const useUserPlan = (userId: string | null): UserPlan => {
       return;
     }
 
-    const cached = loadCachedPlan(userId);
+    const setters = {
+      setPlanId,
+      setHasPlus,
+      setTrialDaysLeft,
+      setCanUpdateMem,
+    };
+
+    const cached = loadCachedBilling(userId);
     if (cached) {
-      setPlanId(cached);
+      applyBillingRow(cached.row, setters);
       setPlanLoaded(true);
     }
 
@@ -65,13 +93,17 @@ export const useUserPlan = (userId: string | null): UserPlan => {
     const supabase = createClient();
     supabase
       .from("users")
-      .select("plan")
+      .select("plan, created_at, trial_ends_at")
       .eq("id", userId)
       .single()
       .then(({ data }) => {
-        const id = (data?.plan as PlanId | null) ?? "free";
-        setPlanId(id);
-        saveCachedPlan(userId, id);
+        const row: UserBillingRow = {
+          plan: data?.plan ?? "free",
+          created_at: data?.created_at ?? new Date().toISOString(),
+          trial_ends_at: data?.trial_ends_at ?? null,
+        };
+        applyBillingRow(row, setters);
+        saveCachedBilling(userId, row);
         setPlanLoaded(true);
       });
   }, [userId]);
@@ -90,9 +122,21 @@ export const useUserPlan = (userId: string | null): UserPlan => {
   }, []);
 
   const plan = getPlan(planId);
+  const dailyLimit = hasPlus ? null : plan.dailyLimit;
   const remaining =
-    plan.dailyLimit === null ? null : Math.max(0, plan.dailyLimit - usedToday);
-  const canSend = plan.dailyLimit === null || usedToday < plan.dailyLimit;
+    dailyLimit === null ? null : Math.max(0, dailyLimit - usedToday);
+  const canSend = dailyLimit === null || usedToday < dailyLimit;
 
-  return { planId, planLoaded, usedToday, remaining, canSend, recordUsage, syncUsageToLimit };
+  return {
+    planId,
+    planLoaded,
+    hasPlusAccess: hasPlus,
+    trialDaysLeft,
+    usedToday,
+    remaining,
+    canSend,
+    canUpdateMemory: canUpdateMem,
+    recordUsage,
+    syncUsageToLimit,
+  };
 };

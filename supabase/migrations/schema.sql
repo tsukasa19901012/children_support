@@ -9,7 +9,7 @@
 -- ────────────────────────────────────────
 -- 1. 型定義
 -- ────────────────────────────────────────
-create type plan_type    as enum ('free', 'lite', 'pro');
+create type plan_type    as enum ('free', 'plus');
 create type message_role as enum ('user', 'assistant');
 
 
@@ -21,6 +21,7 @@ create table if not exists public.users (
   plan              plan_type   not null default 'free',
   stripe_customer_id text       unique,
   active_child_id   uuid,       -- children(id) への FK は children 作成後に追加
+  trial_ends_at     timestamptz not null default (now() + interval '14 days'),
   created_at        timestamptz not null default now()
 );
 
@@ -53,12 +54,12 @@ create table if not exists public.children (
   name       text        not null,
   birthday   date        not null,
   gender     text        check (gender in ('male', 'female', 'other')),
-  memory     text,                -- Lite/Pro: 会話から学習した子ども・家庭の特徴
+  memory     text,                -- 会話から学習した子ども・家庭の特徴（Plusで更新）
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
--- unique 制約なし（Pro プランは複数子ども登録可能）
+-- unique 制約なし（Plus プランは複数子ども登録可能）
 
 alter table public.children enable row level security;
 
@@ -172,8 +173,8 @@ create policy "token_usage: select own"
 
 
 -- ────────────────────────────────────────
--- 7. Free/Lite プランの子ども数制限トリガー
---    Pro プランのみ複数の子どもを登録可能
+-- 7. 子ども数制限トリガー
+--    Plus または14日トライアル中のみ複数登録可
 -- ────────────────────────────────────────
 create or replace function public.check_children_plan_limit()
 returns trigger
@@ -182,11 +183,24 @@ security definer
 as $$
 declare
   user_plan      text;
+  trial_end      timestamptz;
+  user_created   timestamptz;
   children_count int;
 begin
-  select plan into user_plan from public.users where id = NEW.user_id;
+  select plan, trial_ends_at, created_at
+  into user_plan, trial_end, user_created
+  from public.users
+  where id = NEW.user_id;
 
-  if user_plan = 'pro' then
+  if user_plan = 'plus' then
+    return NEW;
+  end if;
+
+  if trial_end is null then
+    trial_end := user_created + interval '14 days';
+  end if;
+
+  if now() < trial_end then
     return NEW;
   end if;
 
@@ -195,7 +209,7 @@ begin
   where user_id = NEW.user_id;
 
   if children_count >= 1 then
-    raise exception 'Free/Lite プランは子どもを1人しか登録できません。Pro プランへのアップグレードが必要です。';
+    raise exception '無料プラン（トライアル終了後）はお子さんを1人しか登録できません。Plusプランへのアップグレードが必要です。';
   end if;
 
   return NEW;
@@ -208,7 +222,7 @@ create trigger children_plan_limit_check
 
 
 -- ────────────────────────────────────────
--- 8. きょうだい関係（Pro・複数子ども）
+-- 8. きょうだい関係（Plus・複数子ども）
 -- ────────────────────────────────────────
 create table if not exists public.child_sibling_relations (
   id          uuid        primary key default gen_random_uuid(),

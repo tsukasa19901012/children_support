@@ -4,14 +4,15 @@
 # 1. Product Vision（プロダクトの目的）
 # =========================
 
-This product is a parenting AI assistant optimized for caregivers of children aged 0–6 (7+ may also use the app).
-（このプロダクトは0〜6歳向けに最適化した育児AI支援アプリ。7歳以上のお子さんがいる家庭も利用可能）
+This product is **となりっこ** — parenting AI that grows with your child through conversation memory (0–6 recommended; 7+ allowed).
+（**となりっこ — うちの子を覚える育児AI**。0〜6歳最適化、7歳以上も利用可）
 
 It aims to:
-- Reduce parental anxiety（親の不安を軽減する）
-- Help interpret child behavior contextually（子どもの行動を文脈的に理解する）
+- Reduce parental anxiety（育児の不安を軽減）
+- Personalize advice via **learning memory**（会話からうちの子に合わせる）
+- Optional **peer/sibling context** on Plus（関係登録時は立場を踏まえる）
 - Provide calm, non-judgmental support（落ち着いた非評価的サポート）
-- Maintain long-term memory of child context（子どもの長期文脈記憶）
+- Maintain long-term memory per child（お子さんごとの学習メモリ）
 - Work primarily on mobile devices（スマホ最優先設計）
 
 ---
@@ -54,7 +55,7 @@ The AI acts as a calm childcare support assistant, NOT a medical expert.
 - Provide possible interpretations（断定ではなく可能性提示）
 - Give simple actionable steps（すぐできる行動）
 - Keep responses short and calm（短く落ち着いた返答）
-- Prioritize advice for child age 0–6; support older ages when asked（0〜6歳を優先、それ以外も可能な範囲で）
+- Adapt to ages 0–6; use registered relations when relevant（0〜6歳・関係登録時は立場を考慮）
 
 ## AI MUST NOT:
 - Provide medical diagnosis（医療診断は禁止）

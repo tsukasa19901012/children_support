@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessages";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { buildRebuildMemoryPrompt } from "../../../../lib/childMemory";
-import type { PlanId } from "../../../../features/billing/types";
+import { fetchUserBilling } from "../../../../features/billing/fetchUserBilling";
 
 const MAX_REBUILD_MESSAGES = 100;
 
@@ -25,14 +25,8 @@ export async function POST(request: NextRequest) {
 
     const db = createServiceSupabaseClient();
 
-    const { data: userRow } = await db
-      .from("users")
-      .select("plan")
-      .eq("id", user.id)
-      .single();
-
-    const planId = (userRow?.plan as PlanId | null) ?? "free";
-    if (planId !== "lite" && planId !== "pro") {
+    const billing = await fetchUserBilling(user.id);
+    if (!billing.canUpdateMemory) {
       return NextResponse.json({ rebuilt: false });
     }
 

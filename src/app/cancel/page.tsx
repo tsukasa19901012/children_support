@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND } from "../../lib/brand";
 
 export default function CancelPage() {
   return (
@@ -9,15 +10,15 @@ export default function CancelPage() {
           お支払いをキャンセルしました
         </h1>
         <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-          またいつでもアップグレードできます。
+          またいつでもプランを選べます。
           <br />
-          無料プランは引き続きご利用いただけます。
+          無料プランでも{BRAND.name}を続けられます。
         </p>
         <Link
           href="/"
           className="block w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-3 rounded-xl transition-colors text-center"
         >
-          チャットに戻る
+          相談に戻る
         </Link>
       </div>
     </div>

@@ -1,5 +1,11 @@
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
+import { BRAND, BRAND_DISPLAY } from "../lib/brand";
 import "./globals.css";
+
+export const metadata: Metadata = {
+  title: BRAND_DISPLAY,
+  description: `${BRAND.description}（${BRAND.audience}）`,
+};
 
 export const viewport: Viewport = {
   width: "device-width",

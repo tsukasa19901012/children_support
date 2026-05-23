@@ -25,7 +25,7 @@ export type ChildRow = AccountChildRow;
 type SiblingRelationRow = AccountSiblingRelationRow;
 
 type Props = {
-  isPro: boolean;
+  hasPlusFeatures: boolean;
   userId: string;
   initialChildren: ChildRow[];
   initialActiveChildId: string | null;
@@ -42,7 +42,7 @@ const actionBtn =
   "flex-1 min-w-[calc(50%-0.25rem)] text-xs font-medium py-2.5 rounded-xl transition-colors";
 
 export function ChildManager({
-  isPro,
+  hasPlusFeatures,
   userId,
   initialChildren,
   initialActiveChildId,
@@ -104,7 +104,7 @@ export function ChildManager({
 
   const hasMultiple = children.length > 1;
   const canDelete = children.length > 1;
-  const needsSelection = !isPro && hasMultiple;
+  const needsSelection = !hasPlusFeatures && hasMultiple;
 
   const confirmDelete = async () => {
     if (!deleteTarget || !canDelete) return;
@@ -153,10 +153,10 @@ export function ChildManager({
       {needsSelection && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs text-amber-700 font-medium mb-0.5">
-            相談するお子さんを選択してください
+            いま相談するお子さんを選んでください
           </p>
           <p className="text-xs text-amber-600">
-            Proプランに戻るとすべてのお子さんのデータが復活します
+            無料プランでは1人分のみ相談できます。Plusに戻ると登録済みのお子さんをすべて使えます
           </p>
         </div>
       )}
@@ -164,7 +164,7 @@ export function ChildManager({
       {children.map((child) => {
         const isActive = child.id === activeChildId;
         const peers = peerRelations(child.id);
-        const showPeers = isPro && hasMultiple && peers.length > 0;
+        const showPeers = hasPlusFeatures && hasMultiple && peers.length > 0;
 
         return (
           <div
@@ -229,7 +229,7 @@ export function ChildManager({
             )}
 
             <div className="mt-3 pt-3 flex flex-wrap gap-2 border-t border-gray-100">
-              {isPro && hasMultiple && (
+              {hasPlusFeatures && hasMultiple && (
                 <button
                   type="button"
                   onClick={() =>
@@ -268,7 +268,7 @@ export function ChildManager({
         );
       })}
 
-      {isPro && (
+      {hasPlusFeatures && (
         <button
           type="button"
           onClick={() => goToOnboarding("/onboarding?mode=add")}
@@ -281,7 +281,7 @@ export function ChildManager({
 
       {needsSelection && (
         <p className="text-xs text-center text-gray-400 pt-1">
-          Proプランにアップグレードするとすべてのお子さんに同時対応できます
+          Plusなら、お子さんごとの相談と、関係の登録が使えます
         </p>
       )}
 

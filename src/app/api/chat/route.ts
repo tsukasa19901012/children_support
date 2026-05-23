@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPlan } from "../../../features/billing/plans";
-import type { PlanId } from "../../../features/billing/types";
+import { fetchUserBilling } from "../../../features/billing/fetchUserBilling";
+import { canUseRelations } from "../../../features/billing/planAccess";
 import {
   createServerSupabaseClient,
   createServiceSupabaseClient,
@@ -38,7 +39,7 @@ function getJSTDayStart(): Date {
 }
 
 const BASE_SYSTEM_PROMPT =
-  "あなたは育児専門の温かいAIアシスタントです。主に0〜6歳のお子さんを育てる保護者向けに最適化されていますが、それ以外の年齢のお子さんについても可能な範囲で支援してください。保護者の不安を受け止め、まず共感を示してから、簡潔で実用的なアドバイスをしてください。医療診断は行わず、必要な場合は専門家への相談を促してください。";
+  "あなたは、0〜6歳のお子さんを育てる保護者に寄り添う育児AIです。会話からうちの子のことを覚え、話せば話すほど的確で温かい支援を目指します。きょうだいや友達の話題があれば、関係性とそれぞれの立場を踏まえて助言してください。まず共感し、短く落ち着いた口調で実用的な一歩を示してください。医療診断は行わず、必要なら専門家への相談を促してください。";
 
 function buildSystemPrompt(
   childContext?: string,
@@ -58,7 +59,7 @@ function buildSystemPrompt(
   return prompt;
 }
 
-/** Pro: 登録済みのきょうだい関係をプロンプト用に取得 */
+/** Plus: 登録済みのきょうだい関係をプロンプト用に取得 */
 async function fetchSiblingPromptBlock(
   childId: string,
   userId: string
@@ -111,7 +112,7 @@ async function fetchSiblingPromptBlock(
   );
 }
 
-/** 子どものメモリをDBから取得する（Lite/Pro のみ）。user_id で所有権を検証。 */
+/** 子どものメモリをDBから取得する。user_id で所有権を検証。 */
 async function fetchChildMemory(childId: string, userId: string): Promise<{ id: string; memory: string | null } | null> {
   const db = createServiceSupabaseClient();
   const { data } = await db
@@ -174,32 +175,12 @@ AIの回答: ${aiMessage}`;
 }
 
 function getUpgradeMessage(dailyLimit: number): string {
-  return `本日の無料枠（${dailyLimit}回）を使い切りました。月980円の Lite プランにアップグレードすると無制限でご利用いただけます。`;
+  const plus = getPlan("plus");
+  return `本日の無料枠（${dailyLimit}回）を使い切りました。Plusプラン（月${plus.priceMonthly.toLocaleString()}円）にすると無制限で、うちの子の記憶も更新し続けられます。`;
 }
 
-/** プランごとの送信履歴ウィンドウ（トークン最適化） */
-const HISTORY_WINDOW: Record<PlanId, number> = {
-  free: 5,
-  lite: 10,
-  pro:  30,
-};
-
-/** DBからユーザーのプランを取得する */
-async function fetchUserPlan(userId: string): Promise<PlanId> {
-  const db = createServiceSupabaseClient();
-
-  await db
-    .from("users")
-    .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
-
-  const { data } = await db
-    .from("users")
-    .select("plan")
-    .eq("id", userId)
-    .single();
-
-  return (data?.plan as PlanId | null) ?? "free";
-}
+const HISTORY_WINDOW_FREE = 5;
+const HISTORY_WINDOW_PLUS = 30;
 
 /** 本日（JST基準）のユーザー送信回数をDBから取得する */
 async function fetchTodayUsage(userId: string): Promise<number> {
@@ -333,17 +314,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. DBからプランを取得、Lite/Proはメモリも取得
-    const planId = await fetchUserPlan(userId);
-    const plan = getPlan(planId);
-    const hasMemory = planId === "lite" || planId === "pro";
-    const childMemoryData = (hasMemory && childId) ? await fetchChildMemory(childId, userId) : null;
+    // 3. プラン・トライアル状態を取得
+    const billing = await fetchUserBilling(userId);
+    const plan = getPlan(billing.planId);
+    const dailyLimit = billing.hasPlusAccess ? null : plan.dailyLimit;
+    const childMemoryData = childId ? await fetchChildMemory(childId, userId) : null;
 
-    // 4. free プランの回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
+    // 4. 無料枠の回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
     const db = createServiceSupabaseClient();
     let insertedMessageId: string | null = null;
 
-    if (plan.dailyLimit !== null) {
+    if (dailyLimit !== null) {
       // ユーザーメッセージを先にDB挿入（child_id付き）
       const { data: inserted, error: insertError } = await db
         .from("messages")
@@ -355,9 +336,9 @@ export async function POST(request: NextRequest) {
         console.warn("[/api/chat] ユーザーメッセージ事前挿入失敗:", insertError.message);
         // insert失敗時でも独立してカウントチェックし、上限を超えていたらブロック
         const fallbackCount = await fetchTodayUsage(userId);
-        if (fallbackCount >= plan.dailyLimit) {
+        if (fallbackCount >= dailyLimit) {
           return NextResponse.json(
-            { error: getUpgradeMessage(plan.dailyLimit), limitReached: true },
+            { error: getUpgradeMessage(dailyLimit), limitReached: true },
             { status: 429 }
           );
         }
@@ -367,20 +348,22 @@ export async function POST(request: NextRequest) {
 
       // 挿入後にカウントを確認（並行リクエストがあっても正確）
       const usedToday = await fetchTodayUsage(userId);
-      if (usedToday > plan.dailyLimit) {
+      if (usedToday > dailyLimit) {
         // 超過していたら挿入したメッセージを削除して制限エラーを返す
         if (insertedMessageId) {
           await db.from("messages").delete().eq("id", insertedMessageId);
         }
         return NextResponse.json(
-          { error: getUpgradeMessage(plan.dailyLimit!), limitReached: true },
+          { error: getUpgradeMessage(dailyLimit), limitReached: true },
           { status: 429 }
         );
       }
     }
 
     // 5. プランに応じて送信履歴ウィンドウを適用
-    const historyWindow = HISTORY_WINDOW[planId];
+    const historyWindow = billing.hasPlusAccess
+      ? HISTORY_WINDOW_PLUS
+      : HISTORY_WINDOW_FREE;
     const trimmedMessages = messages.slice(-historyWindow);
 
     // 6. OpenAI を動的インポート（ビルド時に評価させない）
@@ -395,7 +378,7 @@ export async function POST(request: NextRequest) {
 
     const MODEL = "gpt-4o-mini";
     const siblingBlock =
-      planId === "pro" && childId
+      canUseRelations(billing.row) && childId
         ? await fetchSiblingPromptBlock(childId, userId)
         : null;
     const systemPrompt = buildSystemPrompt(
@@ -414,9 +397,9 @@ export async function POST(request: NextRequest) {
     const aiMessage = completion.choices[0]?.message?.content ?? "";
     const usage = completion.usage;
 
-    // 7. Lite/Pro: メモリを非同期更新（レスポンスをブロックしない）
+    // 7. Plus/トライアル: メモリを非同期更新（Freeは読み取りのみ）
     const effectiveChildId = childMemoryData?.id ?? childId ?? null;
-    if (hasMemory && effectiveChildId && lastUserMessage) {
+    if (billing.canUpdateMemory && effectiveChildId && lastUserMessage) {
       void updateChildMemory(
         effectiveChildId,
         userId,

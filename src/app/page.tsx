@@ -13,6 +13,7 @@ import { useElementHeight } from "../hooks/useElementHeight";
 import { useAutoResizeTextarea } from "../hooks/useAutoResizeTextarea";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
+import { CHAT_HEADER_FALLBACK } from "../lib/brand";
 import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
 import { DeleteConfirmDialog } from "../features/chat/components/DeleteConfirmDialog";
@@ -31,9 +32,20 @@ export default function Home() {
   const [showChildPicker, setShowChildPicker] = useState(false);
   const { userId } = useAuthUserId();
   const { childId, childName, childBirthday, childChecked, allChildren, switchChild } = useChildRedirect(userId);
-  const { canSend, remaining, planId, planLoaded, usedToday, recordUsage, syncUsageToLimit } = useUserPlan(userId);
+  const {
+    canSend,
+    remaining,
+    planId,
+    planLoaded,
+    usedToday,
+    recordUsage,
+    syncUsageToLimit,
+    hasPlusAccess,
+    trialDaysLeft,
+    canUpdateMemory,
+  } = useUserPlan(userId);
   const isLimited = planLoaded && !canSend;
-  const historyDays = getPlan(planId).historyDays;
+  const historyDays = hasPlusAccess ? null : getPlan("free").historyDays;
   const { messages, setMessages, historyLoading, historyError } = useChatHistory(userId, childId, historyDays);
   const [loading, setLoading] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -79,7 +91,7 @@ export default function Home() {
 
       // 上限到達: 楽観的に追加したメッセージを戻し、入力欄を復元してモーダルを表示
       if (res.status === 429) {
-        const limit = getPlan(planId).dailyLimit;
+        const limit = getPlan("free").dailyLimit;
         if (limit !== null) syncUsageToLimit(limit);
         setMessages((prev) => prev.filter((_, i) => i !== prev.length - 1));
         setInput(text);
@@ -154,9 +166,7 @@ export default function Home() {
 
     setDeleting(false);
 
-    // Lite/Pro: 残り履歴から学習メモリを再計算
-    const hasMemory = planId === "lite" || planId === "pro";
-    if (hasMemory && childId) {
+    if (canUpdateMemory && childId) {
       setRebuildingMemory(true);
       const rebuildErr = await rebuildChildMemory(childId);
       setRebuildingMemory(false);
@@ -168,9 +178,9 @@ export default function Home() {
     setDeleteTarget(null);
   };
 
-  const isFree = planLoaded && planId === "free";
+  const showUpgradeCta = planLoaded && !hasPlusAccess;
   const inputDisabled = loading || isLimited;
-  const dailyLimit = getPlan(planId).dailyLimit;
+  const dailyLimit = hasPlusAccess ? null : getPlan("free").dailyLimit;
 
   // 子ども情報の確認が終わるまでローディング
   if (userId && !childChecked) {
@@ -189,8 +199,8 @@ export default function Home() {
       {/* Header */}
       <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="relative flex items-center gap-1">
-          {/* 子ども名 — Proで複数いる場合はタップで切替 */}
-          {planLoaded && planId === "pro" && allChildren.length > 1 ? (
+          {/* 子ども名 — Plusで複数いる場合はタップで切替 */}
+          {planLoaded && hasPlusAccess && allChildren.length > 1 ? (
             <button
               type="button"
               onClick={() => setShowChildPicker((v) => !v)}
@@ -198,14 +208,14 @@ export default function Home() {
             >
               {childName && childBirthday
                 ? `${childName}（${formatAge(childBirthday)}）`
-                : "育児AIチャット"}
+                : CHAT_HEADER_FALLBACK}
               <span className="text-gray-400 text-xs">{showChildPicker ? "▲" : "▼"}</span>
             </button>
           ) : (
             <span className="font-bold text-base">
               {childName && childBirthday
                 ? `${childName}（${formatAge(childBirthday)}）`
-                : "育児AIチャット"}
+                : CHAT_HEADER_FALLBACK}
             </span>
           )}
 
@@ -248,8 +258,14 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
-          {planLoaded && <PlanBadge planId={planId} remaining={remaining} />}
-          {isFree && (
+          {planLoaded && (
+            <PlanBadge
+              planId={planId}
+              remaining={remaining}
+              trialDaysLeft={trialDaysLeft}
+            />
+          )}
+          {showUpgradeCta && (
             <button
               type="button"
               onClick={() => setShowUpgrade(true)}
@@ -267,6 +283,12 @@ export default function Home() {
           </Link>
         </div>
       </header>
+
+      {planLoaded && trialDaysLeft > 0 && (
+        <div className="shrink-0 bg-blue-50 border-b border-blue-100 px-4 py-2 text-xs text-blue-700 text-center leading-relaxed">
+          体験期間中（あと{trialDaysLeft}日）— Plus相当の機能をお試し中です
+        </div>
+      )}
 
       {/* History loading */}
       {historyLoading && messages.length <= 1 && (
@@ -371,7 +393,7 @@ export default function Home() {
                 ? "本日の利用上限に達しました"
                 : loading
                 ? "応答を待っています..."
-                : "育児の相談を入力..."
+                : "いま気になっていることを、気軽に書いてください..."
             }
             disabled={inputDisabled}
           />
@@ -395,7 +417,7 @@ export default function Home() {
           onCancel={() => !deleting && !rebuildingMemory && setDeleteTarget(null)}
           deleting={deleting}
           rebuilding={rebuildingMemory}
-          showMemoryNote={planId === "lite" || planId === "pro"}
+          showMemoryNote={canUpdateMemory}
         />
       )}
     </div>
@@ -405,10 +427,19 @@ export default function Home() {
 function PlanBadge({
   planId,
   remaining,
+  trialDaysLeft,
 }: {
   planId: string;
   remaining: number | null;
+  trialDaysLeft: number;
 }) {
+  if (trialDaysLeft > 0) {
+    return (
+      <span className="text-xs font-medium text-blue-600">
+        体験 残{trialDaysLeft}日
+      </span>
+    );
+  }
   if (planId === "free") {
     return (
       <span className="text-xs text-gray-500">
@@ -427,7 +458,7 @@ function PlanBadge({
   }
   return (
     <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">
-      {planId}
+      PLUS
     </span>
   );
 }
