@@ -4,21 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { getPlan } from "../../features/billing/plans";
+import {
+  shouldShowBillingPortal,
+  shouldShowUpgradeCheckout,
+} from "../../features/billing/billingUi";
 import type { PlanId } from "../../features/billing/types";
 
 type Props = {
   planId: PlanId;
-  hasPlusAccess: boolean;
+  isTrialActive?: boolean;
 };
 
-export function AccountActions({ planId, hasPlusAccess }: Props) {
+export function AccountActions({ planId, isTrialActive = false }: Props) {
   const router = useRouter();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [signOutLoading, setSignOutLoading] = useState(false);
 
-  const isFree = planId === "free" && !hasPlusAccess;
+  const showUpgrade = shouldShowUpgradeCheckout(planId);
+  const showBillingPortal = shouldShowBillingPortal(planId);
   const billingBusy = checkoutLoading || portalLoading;
   const plus = getPlan("plus");
 
@@ -71,11 +76,17 @@ export function AccountActions({ planId, hasPlusAccess }: Props) {
 
   return (
     <div className="space-y-3">
-      {isFree && (
+      {showUpgrade && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <p className="text-sm font-medium text-gray-800">Plusプランにする</p>
           <p className="text-xs text-gray-500 leading-relaxed">
             相談し放題、うちの子の記憶の更新、複数の子の登録、週次の振り返りレポートが使えます。
+            {isTrialActive && (
+              <>
+                <br />
+                体験期間中でも登録できます。登録後はトライアル終了後もPlus機能が続きます。
+              </>
+            )}
           </p>
 
           {billingError && (
@@ -93,7 +104,7 @@ export function AccountActions({ planId, hasPlusAccess }: Props) {
         </div>
       )}
 
-      {!isFree && (
+      {showBillingPortal && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <p className="text-sm font-medium text-gray-800">お支払い・プラン管理</p>
           <p className="text-xs text-gray-500 leading-relaxed">

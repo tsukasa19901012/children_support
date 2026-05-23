@@ -15,6 +15,7 @@ import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import { CHAT_HEADER_FALLBACK } from "../lib/brand";
 import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
+import { shouldShowUpgradeCta } from "../features/billing/billingUi";
 import { DeleteConfirmDialog } from "../features/chat/components/DeleteConfirmDialog";
 import { deleteMessagesFromDb } from "../features/chat/lib/deleteMessages";
 import { rebuildChildMemory } from "../features/chat/lib/rebuildMemory";
@@ -176,7 +177,7 @@ export default function Home() {
     setDeleteTarget(null);
   };
 
-  const showUpgradeCta = planLoaded && !hasPlusAccess;
+  const showUpgradeCta = planLoaded && shouldShowUpgradeCta(planId);
   const inputDisabled = loading || isLimited;
   const dailyLimit = hasPlusAccess ? null : getPlan("free").dailyLimit;
 

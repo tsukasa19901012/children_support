@@ -184,7 +184,7 @@ export default async function AccountPage() {
           />
         </section>
 
-        <AccountActions planId={planId} hasPlusAccess={billing.hasPlusAccess} />
+        <AccountActions planId={planId} isTrialActive={billing.isTrialActive} />
       </div>
       </main>
     </div>

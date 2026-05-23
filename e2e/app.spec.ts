@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { setE2eUserBilling } from "./helpers/billingState";
 
 test.beforeEach(async ({ page }) => {
   const cookies = await page.context().cookies();
@@ -42,24 +43,98 @@ test.describe("認証済みフロー", () => {
   });
 });
 
+test.describe("課金 UI（Free / トライアル / Plus）", () => {
+  test.afterAll(async () => {
+    try {
+      await setE2eUserBilling("trial");
+    } catch {
+      // 認証未設定の CI 等では no-op
+    }
+  });
+
+  test("トライアル中は Plus 登録ボタンが表示され、お支払い管理は出ない", async ({
+    page,
+  }) => {
+    await setE2eUserBilling("trial");
+    await page.goto("/account");
+
+    await expect(page.getByText(/体験期間中/)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Plus.*\/月/ })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "お支払い管理を開く" })
+    ).toBeHidden();
+  });
+
+  test("トライアル終了後の Free でも Plus 登録ボタンが表示される", async ({
+    page,
+  }) => {
+    await setE2eUserBilling("free");
+    await page.goto("/account");
+
+    await expect(page.getByText("無料プランをご利用中です")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Plus.*\/月/ })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "お支払い管理を開く" })
+    ).toBeHidden();
+  });
+
+  test("Plus 契約中はお支払い管理が表示され、Checkout ボタンは出ない", async ({
+    page,
+  }) => {
+    await setE2eUserBilling("plus");
+    await page.goto("/account");
+
+    await expect(page.getByText("Plusプランをご利用中です")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "お支払い管理を開く" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Plus.*\/月/ })
+    ).toBeHidden();
+  });
+
+  test("トライアル中は Checkout API が成功し billing-portal は拒否される", async ({
+    page,
+  }) => {
+    await setE2eUserBilling("trial");
+    await page.goto("/account");
+
+    const checkout = await page.request.post("/api/checkout", {
+      data: { planId: "plus" },
+    });
+    expect(checkout.ok()).toBeTruthy();
+    const checkoutBody = (await checkout.json()) as { url?: string };
+    expect(checkoutBody.url).toMatch(/checkout\.stripe\.com/);
+
+    const portal = await page.request.post("/api/billing-portal");
+    expect(portal.status()).toBe(400);
+    const portalBody = (await portal.json()) as { error?: string };
+    expect(portalBody.error).toMatch(/有料プラン/);
+  });
+});
+
 test.describe("Stripe Checkout（サンドボックス）", () => {
+  test.afterAll(async () => {
+    try {
+      await setE2eUserBilling("trial");
+    } catch {
+      // no-op
+    }
+  });
+
   test("Checkout が Stripe に遷移する", async ({ page }) => {
+    await setE2eUserBilling("trial");
     await page.goto("/account");
 
     const upgradeBtn = page.getByRole("button", {
-      name: /Plus|アップグレード|\/月/,
+      name: /Plus.*\/月/,
     });
-    const hasUpgrade = await upgradeBtn.first().isVisible().catch(() => false);
-
-    if (!hasUpgrade) {
-      test.info().annotations.push({
-        type: "note",
-        description: "Plus 契約中のため Checkout スキップ",
-      });
-      return;
-    }
-
-    await upgradeBtn.first().click();
+    await expect(upgradeBtn).toBeVisible();
+    await upgradeBtn.click();
 
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
     await expect(page).toHaveURL(/checkout\.stripe\.com/);

@@ -27,3 +27,4 @@ npm run test:e2e:ui     # UI モード
 
 - `e2e/` は `tsconfig.json` の exclude 対象（Next.js ビルドに含めない）
 - 認証状態 `e2e/.auth/user.json` は gitignore 済み
+- 課金 UI の回帰テストは `e2e/helpers/billingState.ts` で E2E ユーザーの `plan` / `trial_ends_at` を切り替える
