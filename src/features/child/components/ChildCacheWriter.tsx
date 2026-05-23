@@ -7,17 +7,17 @@ import type { ChildInfo } from "../childCache";
 /** マイページ表示時に子ども一覧をキャッシュし、チャット遷移の待ち時間を短縮 */
 export function ChildCacheWriter({
   userId,
-  children,
+  childList,
   activeChildId,
 }: {
   userId: string;
-  children: ChildInfo[];
+  childList: ChildInfo[];
   activeChildId: string | null;
 }) {
   useEffect(() => {
-    if (!activeChildId || children.length === 0) return;
-    saveChildCache(userId, children, activeChildId);
-  }, [userId, children, activeChildId]);
+    if (!activeChildId || childList.length === 0) return;
+    saveChildCache(userId, childList, activeChildId);
+  }, [userId, childList, activeChildId]);
 
   return null;
 }

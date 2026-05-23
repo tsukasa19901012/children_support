@@ -12,7 +12,6 @@ import { useKeyboardInset } from "../hooks/useKeyboardInset";
 import { useElementHeight } from "../hooks/useElementHeight";
 import { useAutoResizeTextarea } from "../hooks/useAutoResizeTextarea";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
-import type { ChildInfo } from "../features/child/hooks/useChildRedirect";
 import { CHAT_HEADER_FALLBACK } from "../lib/brand";
 import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
@@ -37,7 +36,6 @@ export default function Home() {
     remaining,
     planId,
     planLoaded,
-    usedToday,
     recordUsage,
     syncUsageToLimit,
     hasPlusAccess,

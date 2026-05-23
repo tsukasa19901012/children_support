@@ -78,7 +78,7 @@ export default async function AccountPage() {
       <ChildCacheWriter
         userId={user.id}
         activeChildId={activeChildId}
-        children={children.map((c) => ({
+        childList={children.map((c) => ({
           id: c.id,
           name: c.name,
           birthday: c.birthday,

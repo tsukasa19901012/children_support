@@ -10,6 +10,7 @@ import {
 } from "../../../lib/supabase-server";
 import { buildSiblingPromptBlock } from "../../../features/child/lib/buildSiblingPrompt";
 import type { ChildPeerRelation } from "../../../features/child/types/siblingRelation";
+import type OpenAI from "openai";
 
 type Message = {
   role: "user" | "assistant";
@@ -131,7 +132,7 @@ async function updateChildMemory(
   currentMemory: string | null,
   userMessage: string,
   aiMessage: string,
-  openai: { chat: { completions: { create: Function } } }
+  openai: OpenAI
 ): Promise<void> {
   try {
     const memoryPrompt = currentMemory
