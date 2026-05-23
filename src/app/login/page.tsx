@@ -18,6 +18,8 @@ function toJapaneseError(message: string): string {
     return "このメールアドレスはすでに登録されています。";
   if (/network|fetch/i.test(message))
     return "通信エラーが発生しました。ネットワークを確認してください。";
+  if (/confirmation email|sending.*email|email.*send/i.test(message))
+    return "確認メールの送信に失敗しました。しばらく待ってから再試行するか、時間をおいてお試しください。";
   return "エラーが発生しました。しばらく時間をおいてから再試行してください。";
 }
 
