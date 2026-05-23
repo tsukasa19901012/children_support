@@ -45,7 +45,7 @@ ${conversationText || "（今週は相談がありませんでした）"}
 4. 来週の保護者へのメッセージ
    - 力が抜けて、来週も前向きになれる温かい言葉
 
-最初に「📋 今週の育児振り返りレポート」と見出しをつけてください。
+最初に「📋 今週の育児振り返りレポート（${childName}ちゃん）」と見出しをつけてください。
 トーン：温かく、共感的、押しつけがましくない。専門用語を使わない。`;
 };
 
@@ -53,7 +53,7 @@ function isWeeklyReportEligible(row: UserBillingRow): boolean {
   return hasPlusAccess(row);
 }
 
-/** Plus・トライアル中ユーザーの週次レポートをチャットに挿入する */
+/** Plus・トライアル中ユーザーへ、登録済みのお子さんごとに週次レポートを挿入する */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
   if (eligibleUsers.length === 0) {
     console.log("[report/weekly] 対象ユーザーなし");
-    return NextResponse.json({ sent: 0 });
+    return NextResponse.json({ sent: 0, users: 0 });
   }
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -96,72 +96,89 @@ export async function POST(request: NextRequest) {
 
   for (const user of eligibleUsers) {
     try {
-      const { data: userData } = await db
-        .from("users")
-        .select("active_child_id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const activeChildId = userData?.active_child_id as string | null;
-
-      const childQuery = activeChildId
-        ? db.from("children").select("id, name, birthday, memory").eq("id", activeChildId).eq("user_id", user.id)
-        : db.from("children").select("id, name, birthday, memory").eq("user_id", user.id).order("created_at").limit(1);
-
-      const { data: child } = await childQuery.maybeSingle();
-
-      if (!child) continue;
-
-      const ageText = formatAge(child.birthday);
-
-      const { data: rawWeekMessages } = await db
-        .from("messages")
-        .select("role, content, created_at")
+      const { data: children, error: childrenError } = await db
+        .from("children")
+        .select("id, name, birthday, memory")
         .eq("user_id", user.id)
-        .eq("child_id", child.id)
-        .gte("created_at", oneWeekAgo)
-        .order("created_at", { ascending: true })
-        .order("role", { ascending: false })
-        .limit(50);
+        .order("created_at");
 
-      const weekMessages = rawWeekMessages
-        ? sortMessagesByChatOrder(rawWeekMessages)
-        : null;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: REPORT_PROMPT(
-          child.name,
-          ageText,
-          weekMessages ?? [],
-          child.memory ?? null
-        )}],
-        max_tokens: 800,
-      });
-
-      const reportText = completion.choices[0]?.message?.content?.trim();
-      if (!reportText) continue;
-
-      const { error: insertError } = await db
-        .from("messages")
-        .insert({
-          user_id: user.id,
-          child_id: child.id,
-          role: "assistant",
-          content: reportText,
-        });
-
-      if (insertError) {
-        console.error(`[report/weekly] userId=${user.id} 挿入失敗:`, insertError.message);
+      if (childrenError) {
+        console.error(
+          `[report/weekly] userId=${user.id} 子ども取得失敗:`,
+          childrenError.message
+        );
         continue;
       }
 
-      sentCount++;
+      if (!children?.length) continue;
+
+      for (const child of children) {
+        try {
+          const ageText = formatAge(child.birthday);
+
+          const { data: rawWeekMessages } = await db
+            .from("messages")
+            .select("role, content, created_at")
+            .eq("user_id", user.id)
+            .eq("child_id", child.id)
+            .gte("created_at", oneWeekAgo)
+            .order("created_at", { ascending: true })
+            .order("role", { ascending: false })
+            .limit(50);
+
+          const weekMessages = rawWeekMessages
+            ? sortMessagesByChatOrder(rawWeekMessages)
+            : null;
+
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "user",
+                content: REPORT_PROMPT(
+                  child.name,
+                  ageText,
+                  weekMessages ?? [],
+                  child.memory ?? null
+                ),
+              },
+            ],
+            max_tokens: 800,
+          });
+
+          const reportText = completion.choices[0]?.message?.content?.trim();
+          if (!reportText) continue;
+
+          const { error: insertError } = await db.from("messages").insert({
+            user_id: user.id,
+            child_id: child.id,
+            role: "assistant",
+            content: reportText,
+          });
+
+          if (insertError) {
+            console.error(
+              `[report/weekly] userId=${user.id} childId=${child.id} 挿入失敗:`,
+              insertError.message
+            );
+            continue;
+          }
+
+          sentCount++;
+        } catch (err) {
+          console.error(
+            `[report/weekly] userId=${user.id} childId=${child.id} 処理失敗:`,
+            err
+          );
+        }
+      }
     } catch (err) {
       console.error(`[report/weekly] userId=${user.id} 処理失敗:`, err);
     }
   }
 
-  console.log(`[report/weekly] ${sentCount}件完了`);
-  return NextResponse.json({ sent: sentCount });
+  console.log(
+    `[report/weekly] ${sentCount}件（${eligibleUsers.length}ユーザー）完了`
+  );
+  return NextResponse.json({ sent: sentCount, users: eligibleUsers.length });
 }
