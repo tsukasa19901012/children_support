@@ -41,6 +41,22 @@ test.describe("認証済みフロー", () => {
     await expect(page.getByText("本日の利用状況")).toBeVisible();
     await expect(page.getByText("お子さんと、まわりの関係")).toBeVisible();
   });
+
+  test("相談に切り替えでチャット画面へ遷移する", async ({ page }) => {
+    await page.goto("/account");
+
+    const switchBtn = page
+      .getByRole("button", { name: /相談に切り替え|この子で相談/ })
+      .first();
+    const canSwitch = await switchBtn.isVisible().catch(() => false);
+    if (!canSwitch) {
+      test.skip(true, "お子さんが1人のため切り替えボタンなし");
+    }
+
+    await switchBtn.click();
+    await expect(page).toHaveURL("/");
+    await expect(page.locator("[data-chat-input]")).toBeVisible();
+  });
 });
 
 test.describe("課金 UI（Free / トライアル / Plus）", () => {

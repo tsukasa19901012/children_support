@@ -98,6 +98,7 @@ export function ChildManager({
         children.map((c) => ({ id: c.id, name: c.name, birthday: c.birthday })),
         childId
       );
+      router.push("/");
     }
     setSwitching(null);
   };
