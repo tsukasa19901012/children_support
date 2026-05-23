@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase-browser";
+import { ensurePublicUserRow } from "../../auth/ensurePublicUserRow";
 import {
   activeChildFromCache,
   loadChildCache,
@@ -55,6 +56,8 @@ export function useChildRedirect(userId: string | null) {
 
     (async () => {
       try {
+        await ensurePublicUserRow(supabase, userId);
+
         const [childrenRes, userRes] = await Promise.all([
           supabase
             .from("children")

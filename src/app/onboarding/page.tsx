@@ -17,6 +17,7 @@ import {
   saveChildSiblingRelations,
 } from "../../features/child/lib/siblingRelations";
 import { BRAND } from "../../lib/brand";
+import { ensurePublicUserRow } from "../../features/auth/ensurePublicUserRow";
 import {
   RELATION_NONE,
   storedRelationToKind,
@@ -260,6 +261,13 @@ function OnboardingForm() {
     } = await supabase.auth.getUser();
     if (!user) {
       router.replace("/login");
+      return;
+    }
+
+    const { error: userRowError } = await ensurePublicUserRow(supabase, user.id);
+    if (userRowError) {
+      setError("アカウントの初期化に失敗しました。再度ログインしてください。");
+      setSaving(false);
       return;
     }
 

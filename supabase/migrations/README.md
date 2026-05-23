@@ -35,3 +35,10 @@ select plan::text, count(*) from public.users group by plan;
 `lite` / `pro` が 0 件、`free` / `plus` のみになっていれば OK です。
 
 すでに個別 SQL を実行済みの本番では、`schema.sql` 全体は再実行しないでください。
+
+## public.users が無く onboarding で FK エラーになる場合
+
+**`20260524_auth_users_public_users.sql`** を SQL Editor で実行してください。
+
+- 既存 `auth.users` を `public.users` に backfill
+- 新規サインアップ時に自動で `public.users` 行を作成
