@@ -4,9 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
-import { saveChildCache } from "../../features/child/childCache";
+import { loadChildCache, saveChildCache } from "../../features/child/childCache";
 import {
-  ACCOUNT_RELOAD_CHILDREN_KEY,
   markAccountReturnStack,
 } from "../../features/account/hooks/useAccountReturn";
 import {
@@ -41,6 +40,11 @@ const GENDER_LABEL: Record<string, string> = {
 const actionBtn =
   "flex-1 min-w-[calc(50%-0.25rem)] text-xs font-medium py-2.5 rounded-xl transition-colors";
 
+function activeChildFromCache(userId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return loadChildCache(userId)?.activeChildId ?? null;
+}
+
 export function ChildManager({
   hasPlusFeatures,
   userId,
@@ -51,18 +55,15 @@ export function ChildManager({
   const router = useRouter();
   const pathname = usePathname();
   const [children, setChildren] = useState(initialChildren);
-  const [activeChildId, setActiveChildId] = useState(initialActiveChildId);
+  const [activeChildId, setActiveChildId] = useState<string | null>(
+    () => activeChildFromCache(userId) ?? initialActiveChildId
+  );
   const [relations, setRelations] = useState(siblingRelations);
+  const [syncing, setSyncing] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChildRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-
-  useEffect(() => {
-    setChildren(initialChildren);
-    setActiveChildId(initialActiveChildId);
-    setRelations(siblingRelations);
-  }, [initialChildren, initialActiveChildId, siblingRelations]);
 
   const reloadChildren = useCallback(async () => {
     const supabase = createClient();
@@ -70,13 +71,31 @@ export function ChildManager({
     setChildren(data.children);
     setActiveChildId(data.activeChildId);
     setRelations(data.siblingRelations);
+    if (data.activeChildId && data.children.length > 0) {
+      saveChildCache(
+        userId,
+        data.children.map((c) => ({
+          id: c.id,
+          name: c.name,
+          birthday: c.birthday,
+        })),
+        data.activeChildId
+      );
+    }
   }, [userId]);
 
   useEffect(() => {
     if (pathname !== "/account") return;
-    if (sessionStorage.getItem(ACCOUNT_RELOAD_CHILDREN_KEY) !== "1") return;
-    sessionStorage.removeItem(ACCOUNT_RELOAD_CHILDREN_KEY);
-    void reloadChildren();
+    let cancelled = false;
+    setSyncing(true);
+    void reloadChildren()
+      .catch((err) => console.error("[ChildManager] 再読み込み失敗:", err))
+      .finally(() => {
+        if (!cancelled) setSyncing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, reloadChildren]);
 
   const goToOnboarding = (path: string) => {
@@ -150,7 +169,7 @@ export function ChildManager({
       }));
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${syncing ? "opacity-70" : ""}`}>
       {needsSelection && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs text-amber-700 font-medium mb-0.5">

@@ -53,9 +53,18 @@ test.describe("認証済みフロー", () => {
       test.skip(true, "お子さんが1人のため切り替えボタンなし");
     }
 
+    const card = switchBtn.locator("xpath=ancestor::div[contains(@class,'rounded-2xl')]");
+    const switchedName = await card.locator("p.font-semibold").first().textContent();
+
     await switchBtn.click();
     await expect(page).toHaveURL("/");
     await expect(page.locator("[data-chat-input]")).toBeVisible();
+
+    await page.goto("/account");
+    const activeCard = page
+      .locator("div.rounded-2xl.border")
+      .filter({ hasText: switchedName ?? "" });
+    await expect(activeCard.getByText("✓ 相談中")).toBeVisible({ timeout: 10_000 });
   });
 });
 
