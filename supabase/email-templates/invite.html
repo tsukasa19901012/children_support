@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>ご招待｜となりっこ</title>
+  <style>@media only screen and (max-width:620px){.email-card{padding:28px 20px!important;}}</style>
+</head>
+<body style="margin:0;padding:0;background-color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;">となりっこへのご招待。ログインして育児相談をはじめましょう。</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#F3F4F6;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
+        <tr><td align="center" style="padding-bottom:24px;">
+          <div style="font-size:36px;margin-bottom:8px;">👶</div>
+          <div style="font-size:20px;font-weight:700;color:#1F2937;">となりっこ</div>
+          <div style="font-size:12px;color:#6B7280;margin-top:4px;">うちの子を覚える育児AI</div>
+        </td></tr>
+        <tr><td class="email-card" style="background:#FFF;border-radius:16px;border:1px solid #E5E7EB;padding:36px 32px;">
+          <h1 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#1F2937;text-align:center;">となりっこへのご招待</h1>
+          <p style="margin:0 0 24px;font-size:14px;color:#6B7280;text-align:center;line-height:1.7;">
+            うちの子のことを覚えながら、育児の悩みに寄り添うAIです。<br />下のボタンからアカウントを作成できます。
+          </p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding-bottom:24px;">
+            <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;background-color:#3B82F6;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:12px;">招待を受け取る</a>
+          </td></tr></table>
+          <p style="margin:0;font-size:12px;color:#6B7280;text-align:center;line-height:1.7;">うまく開けない場合は、コード <strong style="color:#1D4ED8;">{{ .Token }}</strong> を {{ .SiteURL }}/login で入力してください。</p>
+        </td></tr>
+        <tr><td align="center" style="padding:28px 8px 0;"><p style="margin:0;font-size:11px;color:#9CA3AF;">{{ .Email }} 宛 · <a href="{{ .SiteURL }}" style="color:#6B7280;">tonarikko.com</a></p></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

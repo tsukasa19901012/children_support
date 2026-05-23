@@ -34,6 +34,7 @@
 ### 認証
 - メールアドレスへの **6桁OTPコード**でログイン
 - Supabase Auth + Resend（カスタムSMTP）
+- メールテンプレート: [`supabase/email-templates/`](supabase/email-templates/)
 
 ### 相談（チャット）
 - **gpt-4o-mini** による育児相談（0〜6歳最適化）

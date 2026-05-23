@@ -15,6 +15,7 @@
 /e2e/.auth/
 /playwright-report/
 /test-results/
+/playwright-supabase-profile/
 
 # next.js
 /.next/

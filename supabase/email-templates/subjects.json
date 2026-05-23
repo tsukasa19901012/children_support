@@ -1,0 +1,8 @@
+{
+  "magic_link": "{{ .Token }} がログイン確認コード｜となりっこ",
+  "confirmation": "【となりっこ】メールアドレスの確認",
+  "invite": "【となりっこ】ご招待のお知らせ",
+  "recovery": "{{ .Token }} が確認コード｜となりっこ",
+  "email_change": "【となりっこ】メールアドレス変更の確認",
+  "reauthentication": "{{ .Token }} が本人確認コード｜となりっこ"
+}

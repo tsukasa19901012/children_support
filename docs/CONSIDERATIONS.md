@@ -59,4 +59,4 @@
 ## 今後
 
 - `/prompts` へのプロンプト集約
-- Resend カスタムドメイン（複数メール宛OTP）
+- Resend カスタムドメイン（複数メール宛OTP）— テンプレートは `supabase/email-templates/` を参照
