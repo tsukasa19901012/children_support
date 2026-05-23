@@ -4,7 +4,7 @@
 
 0〜6歳のママ・パパ向け。会話からうちの子のことを覚えながら、育児の悩みに寄り添うAIです（7歳以上も利用可）。
 
-**本番環境**: https://children-support.vercel.app
+**本番**: [https://www.tonarikko.com](https://www.tonarikko.com)
 
 ---
 
@@ -29,31 +29,6 @@
 
 ---
 
-## 機能一覧
-
-### 認証
-- メールアドレスへの **6桁OTPコード**でログイン
-- Supabase Auth + Resend（カスタムSMTP）
-- メールテンプレート: [`supabase/email-templates/`](supabase/email-templates/)
-
-### 相談（チャット）
-- **gpt-4o-mini** による育児相談（0〜6歳最適化）
-- お子さんの名前・月齢をもとにパーソナライズ
-- メモリの読み取り（Free）／更新（Plus・トライアル）
-- 会話の削除（Plus・トライアルはメモリ再計算）
-
-### プラン・課金
-- Free / Plus（Stripe Checkout・Customer Portal）
-- 初回14日は Plus 相当の体験（案Cトライアル）
-- Webhook でプラン自動反映
-
-### 週次レポート（Plus・トライアル）
-- 毎週月曜 8:00（JST）に自動生成
-- Plus 契約中、または14日トライアル中のユーザーが対象
-- **登録済みのお子さんごと**に、その子の会話・メモリをもとにレポートを生成
-
----
-
 ## 技術スタック
 
 | カテゴリ | 技術 |
@@ -61,31 +36,83 @@
 | フレームワーク | Next.js 16 (App Router) |
 | 認証 / DB | Supabase |
 | AI | OpenAI API (gpt-4o-mini) |
-| 決済 | Stripe |
+| 決済 | Stripe（サンドボックス / 本番） |
+| メール | Resend + Supabase Auth SMTP |
 | ホスティング | Vercel |
 
 ---
 
 ## セットアップ
 
-`.env.example` を `.env.local` にコピーして値を設定してください。
-
-**既存DB**では `supabase/migrations/20260520_plan_plus_trial.sql` を実行してください。
-
 ```bash
+cp .env.example .env.local   # 値を設定
 npm install
 npm run dev
 ```
 
+`.env.example` を参照。本番 URL は `NEXT_PUBLIC_BASE_URL=https://www.tonarikko.com`。
+
+**既存 DB の移行**は [supabase/migrations/README.md](supabase/migrations/README.md) を参照。
+
 ---
 
-## ディレクトリ構成（抜粋）
+## npm scripts
+
+| コマンド | 内容 |
+|----------|------|
+| `npm run dev` | 開発サーバー |
+| `npm run build` | 本番ビルド（Vercel と同等） |
+| `npm test` | ユニットテスト（Vitest） |
+| `npm run test:e2e` | 本番向け E2E（Playwright） |
+| `npm run supabase:apply-email-templates` | Auth メールテンプレート反映 |
+| `npm run check:deploy` | Vercel デプロイ状態確認 |
+
+---
+
+## CI / デプロイ
+
+- **GitHub Actions** (`.github/workflows/ci.yml`): push/PR で lint・test・build
+- **`main` push 後**: CI が Vercel ステータスを確認
+- 失敗時はローカルで `npm run build` して原因を特定
+
+---
+
+## ディレクトリ構成
 
 ```
 src/
-├ app/           # ページ・API Routes
-├ features/      # auth, chat, child, billing, ...
+├ app/              # ページ・API Routes
+├ features/         # auth, chat, child, billing, ...
 ├ components/
-├ lib/
-└ prompts/       # （将来）プロンプト管理
+└ lib/              # brand.ts, supabase, ...
+
+e2e/                # Playwright（tsconfig exclude）
+supabase/
+├ migrations/       # DB スキーマ・移行
+└ email-templates/    # Auth メール HTML
+
+scripts/            # 運用スクリプト
+docs/               # 仕様・UX・ビジョン
+.github/workflows/  # CI
 ```
+
+---
+
+## ドキュメント
+
+| ファイル | 内容 |
+|----------|------|
+| [docs/CONSIDERATIONS.md](docs/CONSIDERATIONS.md) | 仕様・プラン・制約 |
+| [docs/vision.md](docs/vision.md) | プロダクトビジョン |
+| [docs/ux.md](docs/ux.md) | UX 原則 |
+| [supabase/README.md](supabase/README.md) | DB・メール運用 |
+| [e2e/README.md](e2e/README.md) | E2E テスト |
+| [AGENTS.md](AGENTS.md) | AI / 外部サービス更新方針 |
+
+---
+
+## 認証メール
+
+- 6桁 OTP でログイン（Magic Link テンプレートに OTP 表示）
+- テンプレート: [supabase/email-templates/](supabase/email-templates/)
+- 反映: `npm run supabase:apply-email-templates`（要 `SUPABASE_ACCESS_TOKEN`）

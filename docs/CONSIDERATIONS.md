@@ -56,7 +56,24 @@
 | 編集から戻る | `router.back()` + 必要時のみ子どもデータをクライアント再取得 |
 | 相談切替 | カード右上（相談中ラベルと同位置） |
 
+## 認証・メール
+
+| 項目 | 内容 |
+|------|------|
+| ログイン | 6桁 OTP（`/login`） |
+| SMTP | Resend（`mail.tonarikko.com`） |
+| テンプレート | `supabase/email-templates/` — `npm run supabase:apply-email-templates` で反映 |
+| Site URL | `https://www.tonarikko.com`（www 必須） |
+
+## テスト・CI
+
+| 項目 | 内容 |
+|------|------|
+| ユニット | `npm test`（Vitest） |
+| E2E | `npm run test:e2e` — 本番 URL。詳細は [e2e/README.md](../e2e/README.md) |
+| CI | `.github/workflows/ci.yml` — lint / test / build / Vercel 確認 |
+| デプロイ確認 | `npm run check:deploy` |
+
 ## 今後
 
 - `/prompts` へのプロンプト集約
-- Resend カスタムドメイン（複数メール宛OTP）— テンプレートは `supabase/email-templates/` を参照
