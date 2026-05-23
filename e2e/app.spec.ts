@@ -58,7 +58,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
     await setE2eUserBilling("trial");
     await page.goto("/account");
 
-    await expect(page.getByText(/体験期間中/)).toBeVisible();
+    await expect(page.getByText(/体験期間中（あと\d+日）/)).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Plus.*\/月/ })
     ).toBeVisible();
