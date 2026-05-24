@@ -4,10 +4,16 @@ test.describe("公開ページ", () => {
   test("ログインページが表示される", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "となりっこ" })).toBeVisible();
+    await expect(page.locator('img[src="/logo.png"]').first()).toBeVisible();
     await expect(page.getByLabel("メールアドレス")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "確認コードを送る" })
     ).toBeVisible();
+  });
+
+  test("ロゴと PWA manifest が配信される", async ({ request }) => {
+    expect((await request.get("/logo.png")).status()).toBe(200);
+    expect((await request.get("/site.webmanifest")).status()).toBe(200);
   });
 
   test("未認証で / は /login にリダイレクト", async ({ page }) => {

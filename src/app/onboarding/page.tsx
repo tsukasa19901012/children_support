@@ -17,6 +17,7 @@ import {
   saveChildSiblingRelations,
 } from "../../features/child/lib/siblingRelations";
 import { BRAND } from "../../lib/brand";
+import { BrandMark } from "../../features/auth/components/BrandMark";
 import { ensurePublicUserRow } from "../../features/auth/ensurePublicUserRow";
 import {
   RELATION_NONE,
@@ -407,7 +408,9 @@ function OnboardingForm() {
     <div className="flex flex-col items-center justify-center min-h-dvh bg-gray-50 px-6 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">👶</div>
+          <div className="mb-3 flex justify-center">
+            <BrandMark size="xl" />
+          </div>
           <h1 className="text-xl font-bold text-gray-800">{title}</h1>
           <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
         </div>

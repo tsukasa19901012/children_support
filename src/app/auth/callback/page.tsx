@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase-browser";
+import { BrandMark } from "../../../features/auth/components/BrandMark";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -54,7 +55,9 @@ export default function AuthCallbackPage() {
   return (
     <div className="flex items-center justify-center h-dvh bg-gray-50">
       <div className="text-center">
-        <div className="text-3xl mb-3">👶</div>
+        <div className="mb-3 flex justify-center">
+          <BrandMark size="md" />
+        </div>
         <p className="text-gray-500 text-sm">ログイン中...</p>
       </div>
     </div>

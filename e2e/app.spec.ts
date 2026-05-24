@@ -163,5 +163,9 @@ test.describe("Stripe Checkout（サンドボックス）", () => {
 
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
     await expect(page).toHaveURL(/checkout\.stripe\.com/);
+    await expect(page.getByRole("link", { name: /となりっこ/ })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("img", { name: "となりっこ logo" })).toBeVisible();
   });
 });

@@ -13,6 +13,7 @@ import { useElementHeight } from "../hooks/useElementHeight";
 import { useAutoResizeTextarea } from "../hooks/useAutoResizeTextarea";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import { CHAT_HEADER_FALLBACK } from "../lib/brand";
+import { BrandMark } from "../features/auth/components/BrandMark";
 import { formatAge, buildChildContext } from "../lib/childAge";
 import { getPlan } from "../features/billing/plans";
 import { shouldShowUpgradeCta } from "../features/billing/billingUi";
@@ -186,7 +187,9 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center h-dvh bg-gray-50">
         <div className="text-center">
-          <div className="text-3xl mb-3">👶</div>
+          <div className="mb-3 flex justify-center">
+            <BrandMark size="md" />
+          </div>
           <p className="text-gray-400 text-sm">読み込み中...</p>
         </div>
       </div>
@@ -243,7 +246,7 @@ export default function Home() {
                         : "text-gray-700 hover:bg-gray-50 active:bg-gray-100"
                     }`}
                   >
-                    <span className="text-lg">👶</span>
+                    <BrandMark size="sm" />
                     <div>
                       <p className="text-sm font-medium">{child.name}</p>
                       <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
