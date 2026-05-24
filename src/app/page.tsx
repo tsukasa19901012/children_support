@@ -196,29 +196,31 @@ export default function Home() {
   return (
     <div className="flex flex-col h-dvh bg-gray-100">
       {/* Header */}
-      <header className="shrink-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="relative flex items-center gap-1">
-          {/* 子ども名 — Plusで複数いる場合はタップで切替 */}
+      <header className="shrink-0 bg-white border-b px-3 py-2 flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
           {planLoaded && hasPlusAccess && allChildren.length > 1 ? (
             <button
               type="button"
               onClick={() => setShowChildPicker((v) => !v)}
-              className="flex items-center gap-1 font-bold text-base text-gray-800 active:opacity-70"
+              className="flex items-center gap-0.5 max-w-full font-bold text-sm text-gray-800 active:opacity-70"
             >
-              {childName && childBirthday
-                ? `${childName}（${formatAge(childBirthday)}）`
-                : CHAT_HEADER_FALLBACK}
-              <span className="text-gray-400 text-xs">{showChildPicker ? "▲" : "▼"}</span>
+              <span className="truncate">
+                {childName && childBirthday
+                  ? `${childName}（${formatAge(childBirthday)}）`
+                  : CHAT_HEADER_FALLBACK}
+              </span>
+              <span className="text-gray-400 text-[10px] shrink-0">
+                {showChildPicker ? "▲" : "▼"}
+              </span>
             </button>
           ) : (
-            <span className="font-bold text-base">
+            <p className="truncate font-bold text-sm text-gray-800">
               {childName && childBirthday
                 ? `${childName}（${formatAge(childBirthday)}）`
                 : CHAT_HEADER_FALLBACK}
-            </span>
+            </p>
           )}
 
-          {/* 子ども切替ドロップダウン */}
           {showChildPicker && (
             <>
               {/* オーバーレイ */}
@@ -256,7 +258,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0">
           {planLoaded && (
             <PlanBadge
               planId={planId}
@@ -268,7 +270,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setShowUpgrade(true)}
-              className="text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full transition-colors"
+              className="text-[11px] font-medium bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-full transition-colors whitespace-nowrap"
             >
               アップグレード
             </button>
@@ -276,7 +278,7 @@ export default function Home() {
           <Link
             href="/account"
             prefetch
-            className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
+            className="text-[11px] text-gray-400 hover:text-gray-600 px-1.5 py-1 whitespace-nowrap"
           >
             マイページ
           </Link>
@@ -432,32 +434,25 @@ function PlanBadge({
   remaining: number | null;
   trialDaysLeft: number;
 }) {
-  if (trialDaysLeft > 0) {
-    return (
-      <span className="text-xs font-medium text-blue-600">
-        体験 残{trialDaysLeft}日
-      </span>
-    );
-  }
+  // 体験期間中は無制限。詳細はマイページに表示（ヘッダーとの重複を避ける）
+  if (trialDaysLeft > 0) return null;
+
   if (planId === "free") {
+    if (remaining === null) return null;
     return (
-      <span className="text-xs text-gray-500">
-        FREE
-        {remaining !== null && (
-          <span
-            className={`ml-1 font-medium ${
-              remaining === 0 ? "text-red-500" : "text-gray-600"
-            }`}
-          >
-            残り{remaining}回
-          </span>
-        )}
+      <span
+        className={`text-[11px] font-medium whitespace-nowrap ${
+          remaining === 0 ? "text-red-500" : "text-gray-500"
+        }`}
+      >
+        残{remaining}回
       </span>
     );
   }
+
   return (
-    <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">
-      PLUS
+    <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide whitespace-nowrap">
+      Plus
     </span>
   );
 }
