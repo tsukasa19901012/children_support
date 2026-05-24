@@ -3,7 +3,7 @@
 import { Suspense, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
-import { BRAND } from "../../lib/brand";
+import { LoginScreen } from "../../features/auth/components/LoginScreen";
 
 type Status = "idle" | "loading" | "code_sent" | "verifying" | "error";
 
@@ -100,125 +100,28 @@ function LoginForm() {
     }
   };
 
+  const phase =
+    status === "code_sent" || status === "verifying" ? "code" : "email";
+
   return (
-    <div className="flex flex-col items-center justify-center h-dvh bg-gray-50 px-6">
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-3">👶</div>
-          <h1 className="text-xl font-bold text-gray-800">{BRAND.name}</h1>
-          <p className="text-xs text-gray-500 mt-1">{BRAND.subtitle}</p>
-          <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-            {BRAND.tagline}
-            <br />
-            <span className="text-gray-500">{BRAND.subtagline}</span>
-          </p>
-          <p className="text-xs text-gray-400 mt-2">{BRAND.audience}</p>
-          <p className="text-sm text-gray-500 mt-3">
-            {status === "code_sent" || status === "verifying"
-              ? "確認コードを入力"
-              : "メールアドレスでログイン"}
-          </p>
-        </div>
-
-        {status === "code_sent" || status === "verifying" ? (
-          /* コード入力フォーム */
-          <form
-            onSubmit={handleVerifyCode}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8"
-          >
-            <p className="text-sm text-gray-600 mb-4 text-center leading-relaxed">
-              <span className="font-medium text-gray-800">{email}</span> に
-              <br />
-              6桁の確認コードを送りました
-            </p>
-
-            <input
-              ref={codeInputRef}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              disabled={status === "verifying"}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-400 disabled:bg-gray-50 mb-4 text-center text-xl tracking-widest"
-            />
-
-            {errorMessage && (
-              <p className="text-xs text-red-500 mb-3 text-center">{errorMessage}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={status === "verifying" || code.length < 6}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
-            >
-              {status === "verifying" ? "確認中..." : "ログイン"}
-            </button>
-
-            <div className="flex justify-between mt-4">
-              <button
-                type="button"
-                onClick={() => { setStatus("idle"); setCode(""); setErrorMessage(""); }}
-                className="text-xs text-gray-400 underline"
-              >
-                メールアドレスを変更
-              </button>
-              <button
-                type="button"
-                onClick={handleResend}
-                className="text-xs text-blue-500 underline"
-              >
-                コードを再送する
-              </button>
-            </div>
-          </form>
-        ) : (
-          /* メール入力フォーム */
-          <form
-            onSubmit={handleSendCode}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-8"
-          >
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              メールアドレス
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@email.com"
-              required
-              disabled={status === "loading"}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-400 disabled:bg-gray-50 mb-4"
-            />
-
-            {errorMessage && (
-              <p className="text-xs text-red-500 mb-3">{errorMessage}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={status === "loading" || !email.trim()}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium py-3 rounded-xl text-sm transition-colors"
-            >
-              {status === "loading" ? "送信中..." : "確認コードを送る"}
-            </button>
-
-            <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
-              メールアドレスに6桁の確認コードを送ります。
-              <br />
-              パスワードは不要です。
-            </p>
-          </form>
-        )}
-      </div>
-    </div>
+    <LoginScreen
+      phase={phase}
+      email={email}
+      code={code}
+      status={status}
+      errorMessage={errorMessage}
+      codeInputRef={codeInputRef}
+      onEmailChange={setEmail}
+      onCodeChange={setCode}
+      onSendCode={handleSendCode}
+      onVerifyCode={handleVerifyCode}
+      onResend={handleResend}
+      onChangeEmail={() => {
+        setStatus("idle");
+        setCode("");
+        setErrorMessage("");
+      }}
+    />
   );
 }
 

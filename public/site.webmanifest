@@ -1,0 +1,28 @@
+{
+  "name": "となりっこ — うちの子を覚える育児AI",
+  "short_name": "となりっこ",
+  "description": "うちの子のことを覚えながら、育児の悩みに寄り添うAI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EFF6FF",
+  "theme_color": "#2563EB",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}

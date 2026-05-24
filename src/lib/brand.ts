@@ -1,3 +1,12 @@
+/** 本番 URL（OG・メール・外部連携の正） */
+export const BRAND_SITE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") ||
+  "https://www.tonarikko.com";
+
+/** ロゴ（public/logo.png）。メール・OG・Stripe 等で共通 */
+export const BRAND_LOGO_PATH = "/logo.png";
+export const BRAND_LOGO_URL = `${BRAND_SITE_URL}${BRAND_LOGO_PATH}`;
+
 /** プロダクトの表示名・コピー（UI・ドキュメントで共有） */
 export const BRAND = {
   name: "となりっこ",

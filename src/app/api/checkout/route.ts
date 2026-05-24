@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { BRAND } from "../../../lib/brand";
 import { getStripe } from "../../../lib/stripe";
 import { getPlan } from "../../../features/billing/plans";
 import { getPlusStripePriceId } from "../../../features/billing/stripePrices";
@@ -49,11 +50,23 @@ export async function POST(request: NextRequest) {
 
     const existingCustomerId = userRow?.stripe_customer_id as string | null;
 
+    const logoFileId = process.env.STRIPE_BRAND_LOGO_FILE_ID?.trim();
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/cancel`,
+      branding_settings: {
+        display_name: BRAND.name,
+        background_color: "#EFF6FF",
+        button_color: "#2563EB",
+        border_style: "rounded",
+        font_family: "noto_sans",
+        ...(logoFileId
+          ? { logo: { type: "file", file: logoFileId } }
+          : {}),
+      },
       ...(existingCustomerId
         ? { customer: existingCustomerId }
         : { customer_email: user.email ?? undefined }),

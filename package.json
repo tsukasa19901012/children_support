@@ -12,6 +12,7 @@
     "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
     "test:e2e:ui": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test --ui",
     "supabase:apply-email-templates": "node scripts/apply-supabase-email-templates.mjs",
+    "stripe:apply-branding": "node scripts/apply-stripe-branding.mjs",
     "check:deploy": "node scripts/check-deploy-status.mjs"
   },
   "dependencies": {
