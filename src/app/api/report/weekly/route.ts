@@ -61,7 +61,7 @@ function isWeeklyReportEligible(row: UserBillingRow): boolean {
 }
 
 /** Plus・トライアル中ユーザーへ、登録済みプロフィール（お子さん・保護者）ごとに週次レポートを挿入する */
-export async function POST(request: NextRequest) {
+async function runWeeklyReport(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -207,4 +207,13 @@ export async function POST(request: NextRequest) {
     `[report/weekly] ${sentCount}件（${eligibleUsers.length}ユーザー）完了`
   );
   return NextResponse.json({ sent: sentCount, users: eligibleUsers.length });
+}
+
+/** Vercel Cron は GET で呼び出す */
+export async function GET(request: NextRequest) {
+  return runWeeklyReport(request);
+}
+
+export async function POST(request: NextRequest) {
+  return runWeeklyReport(request);
 }

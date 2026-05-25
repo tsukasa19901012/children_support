@@ -36,8 +36,10 @@ test.describe("API（認証なし）", () => {
   });
 
   test("weekly report API は CRON_SECRET なしで 401", async ({ request }) => {
-    const res = await request.post("/api/report/weekly");
-    expect(res.status()).toBe(401);
+    const getRes = await request.get("/api/report/weekly");
+    expect(getRes.status()).toBe(401);
+    const postRes = await request.post("/api/report/weekly");
+    expect(postRes.status()).toBe(401);
   });
 
   test("checkout API は未認証で拒否される", async ({ request }) => {
