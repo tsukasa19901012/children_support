@@ -72,7 +72,7 @@ export function buildCaregiverSystemPrompt(
   return prompt;
 }
 
-/** 保護者メモリ更新用プロンプト */
+/** あなた（保護者）の記憶（memory）更新用プロンプト */
 export function buildCaregiverMemoryExtractPrompt(
   currentMemory: string | null,
   userMessage: string,

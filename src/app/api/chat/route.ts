@@ -122,7 +122,7 @@ async function fetchSiblingPromptBlock(
   );
 }
 
-/** 子ども/保護者プロフィールをDBから取得する。user_id で所有権を検証。 */
+/** 子ども / あなた（保護者）（caregiver）を DB から取得。user_id で所有権を検証。 */
 async function fetchProfileMemory(
   childId: string,
   userId: string
@@ -191,7 +191,7 @@ async function updateProfileMemory(
       .eq("id", profileId)
       .eq("user_id", userId);
   } catch (err) {
-    console.warn("[/api/chat] メモリ更新失敗（非致命的）:", err);
+    console.warn("[/api/chat] 記憶更新失敗（非致命的）:", err);
   }
 }
 
@@ -361,7 +361,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. プラン・トライアル状態を取得
+    // 3. プラン・体験期間状態を取得
     const billing = await fetchUserBilling(userId);
     const plan = getPlan(billing.planId);
     const dailyLimit = billing.hasPlusAccess ? null : plan.dailyLimit;
@@ -370,7 +370,7 @@ export async function POST(request: NextRequest) {
       ? { id: profileData.id, memory: profileData.memory }
       : null;
 
-    // 4. 無料枠の回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
+    // 4. 利用上限チェック（競合状態対策：先にDB挿入して原子的にカウント）
     const db = createServiceSupabaseClient();
     let insertedMessageId: string | null = null;
 
@@ -467,7 +467,7 @@ export async function POST(request: NextRequest) {
     const aiMessage = completion.choices[0]?.message?.content ?? "";
     const usage = completion.usage;
 
-    // 7. Plus/トライアル: メモリを非同期更新（Freeは読み取りのみ）
+    // 7. Plus/体験期間: 記憶を非同期更新（Freeは覚えた分の反映のみ）
     const effectiveChildId = childMemoryData?.id ?? childId ?? null;
     if (billing.canUpdateMemory && effectiveChildId && lastUserMessage && profileData) {
       void updateProfileMemory(

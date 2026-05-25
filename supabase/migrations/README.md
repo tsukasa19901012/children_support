@@ -9,9 +9,9 @@
 - ユーザー・子ども・メッセージ・トークン使用量
 - `trial_ends_at`（14日体験）
 - Free / Plus プラン
-- 子ども数制限（Plus またはトライアル中のみ複数可）
+- 子ども数制限（Plus または体験期間中のみ複数可）
 - Plus 向け `child_sibling_relations`（きょうだい・友達・保護者関係）
-- 保護者プロフィール（`profile_type = caregiver`）— Plus / トライアル、1人まで
+- あなた（保護者）（`profile_type = caregiver`）— Plus / 体験期間、1人まで
 - `messages.message_type`（`chat` / `weekly_report`）— 週次レポート識別
 - `auth.users` 作成時の `public.users` 自動追加
 

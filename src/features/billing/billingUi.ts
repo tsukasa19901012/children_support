@@ -2,7 +2,7 @@ import type { PlanId } from "./types";
 
 /**
  * Stripe Checkout への導線を出すか。
- * hasPlusAccess ではなく planId で判定する（トライアル中は plan=free だが Plus 相当の機能あり）。
+ * hasPlusAccess ではなく planId で判定する（体験期間中は plan=free だが Plusと同じ機能あり）。
  */
 export function shouldShowUpgradeCheckout(planId: PlanId): boolean {
   return planId !== "plus";

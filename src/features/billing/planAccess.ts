@@ -25,17 +25,17 @@ export function isTrialActive(row: UserBillingRow, now = new Date()): boolean {
   return now < getTrialEndsAt(row);
 }
 
-/** Plus 契約中、または14日トライアル中 */
+/** Plus 契約中、または14日体験期間中 */
 export function hasPlusAccess(row: UserBillingRow, now = new Date()): boolean {
   return normalizePlanId(row.plan) === "plus" || isTrialActive(row, now);
 }
 
-/** 会話に既存メモリを載せる（Free でも可） */
+/** 会話に既存の記憶（memory）を載せる — Free でも可 */
 export function canReadMemory(): boolean {
   return true;
 }
 
-/** 会話からメモリを更新する（Plus またはトライアルのみ） */
+/** 会話から記憶を更新する — Plus または体験期間中のみ */
 export function canUpdateMemory(row: UserBillingRow, now = new Date()): boolean {
   return hasPlusAccess(row, now);
 }

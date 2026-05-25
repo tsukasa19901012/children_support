@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** 保護者プロフィールが「誰の保護者か」を一方向で保存（child → caregiver, relation=guardian） */
+/** あなた（保護者）が「誰の保護者か」を保存（child → caregiver, relation=guardian） */
 export async function saveGuardianRelations(
   supabase: SupabaseClient,
   userId: string,
@@ -32,7 +32,7 @@ export async function saveGuardianRelations(
   return { error: insError?.message ?? null };
 }
 
-/** 保護者が担当するお子さん ID 一覧 */
+/** あなた（保護者）が担当するお子さん ID 一覧 */
 export async function fetchGuardianChildIds(
   supabase: SupabaseClient,
   userId: string,

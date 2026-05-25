@@ -62,7 +62,7 @@ function isWeeklyReportEligible(row: UserBillingRow): boolean {
   return hasPlusAccess(row);
 }
 
-/** Plus・トライアル中ユーザーへ、登録済みプロフィール（お子さん・保護者）ごとに週次レポートを挿入する */
+/** Plus・体験期間中ユーザーへ、お子さん・あなた（保護者）ごとに週次レポートを挿入する */
 async function runWeeklyReport(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

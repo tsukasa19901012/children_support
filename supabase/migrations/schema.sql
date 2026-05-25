@@ -185,8 +185,8 @@ create policy "token_usage: select own"
 
 
 -- ────────────────────────────────────────
--- 7. 子ども数・保護者プロフィール制限トリガー
---    Plus または14日トライアル中のみ複数登録可
+-- 7. 子ども数・あなた（保護者）/ caregiver 制限トリガー
+--    Plus または14日体験期間中のみ複数登録可
 -- ────────────────────────────────────────
 create or replace function public.check_children_plan_limit()
 returns trigger

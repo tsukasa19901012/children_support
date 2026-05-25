@@ -11,9 +11,9 @@ It aims to:
 - Reduce parental anxiety（育児の不安を軽減）
 - Personalize advice via **learning memory**（会話からうちの子に合わせる）
 - Optional **peer/sibling context** on Plus（関係登録時は立場を踏まえる）
-- Optional **caregiver self-consultation** on Plus（保護者本人の相談・登録済み子ども情報を参照）
+- Optional **caregiver self-consultation** on Plus（あなた（保護者）の相談・登録済みお子さん情報を踏まえる）
 - Provide calm, non-judgmental support（落ち着いた非評価的サポート）
-- Maintain long-term memory per child（お子さんごとの学習メモリ）
+- Maintain long-term memory per child（お子さんごとに覚えた内容を保持 — 内部 `memory` 列）
 - Work primarily on mobile devices（スマホ最優先設計）
 
 ---
@@ -119,9 +119,9 @@ Each feature must be self-contained.
 # =========================
 
 - Child is the core entity（子どもが中心）
-- All chats linked to a profile context（お子さんまたは保護者プロフィールに紐付け）
-- At least one child profile required per account（お子さんプロフィールは最低1人必須）
-- Caregiver profile: Plus only, max 1, optional birthday/gender（保護者はPlus・1人・誕生日任意）
+- All chats linked to a profile context（お子さんまたはあなた（保護者） / `profile_type = caregiver` に紐付け）
+- At least one child profile required per account（お子さんは最低1人必須）
+- Caregiver profile: Plus only, max 1, optional birthday/gender（あなた（保護者）はPlus・1人・誕生日任意）
 - Raw logs must be summarized（生データではなく要約保存）
 - Weekly summaries required（週次レポート必須）
 

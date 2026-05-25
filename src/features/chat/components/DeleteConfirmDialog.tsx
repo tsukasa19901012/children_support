@@ -6,7 +6,7 @@ type Props = {
   deleting?: boolean;
   /** 削除後の学習メモリ再計算中 */
   rebuilding?: boolean;
-  /** メモリ更新可のプラン向け：削除時に学習も更新される旨 */
+  /** 記憶更新可のプラン向け：削除時に覚えた内容も更新される旨 */
   showMemoryNote?: boolean;
 };
 

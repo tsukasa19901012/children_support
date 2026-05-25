@@ -1,4 +1,5 @@
--- ユーザー向けエラーメッセージを UI 文言に合わせる（保護者（自分）・体験期間）
+-- ユーザー向けエラーメッセージを UI 文言に合わせる（体験期間表記）
+-- 注: 20260527 で あなた（保護者） ラベルに更新済み
 
 create or replace function public.check_children_plan_limit()
 returns trigger

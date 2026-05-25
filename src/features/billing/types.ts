@@ -12,9 +12,9 @@ export type Plan = {
   historyDays: number | null;
   /** 長期記憶を会話に反映できるか */
   memoryEnabled: boolean;
-  /** 長期記憶を会話から更新できるか（Freeは読み取りのみ） */
+  /** 会話からうちの子の記憶を更新できるか（Freeは覚えた分の反映のみ） */
   memoryUpdateEnabled: boolean;
-  /** 複数子・関係登録・保護者相談・週次レポート */
+  /** 複数子・関係登録・あなた（保護者）の相談・週次レポート */
   plusFeaturesEnabled: boolean;
 };
 
@@ -22,9 +22,9 @@ export type UserPlan = {
   planId: PlanId;
   /** DBからプラン取得済み（未取得時はUIを出さない） */
   planLoaded: boolean;
-  /** Plus契約または14日トライアル中 */
+  /** Plus契約または14日体験期間中 */
   hasPlusAccess: boolean;
-  /** トライアル残日数（0 = 終了またはPlus契約中） */
+  /** 体験期間残日数（0 = 終了またはPlus契約中） */
   trialDaysLeft: number;
   /** 本日の送信回数 */
   usedToday: number;
@@ -32,7 +32,7 @@ export type UserPlan = {
   remaining: number | null;
   /** 送信可能か */
   canSend: boolean;
-  /** メモリを会話から更新できるか */
+  /** 会話から記憶（memory）を更新できるか */
   canUpdateMemory: boolean;
   /** 使用回数を1増やす */
   recordUsage: () => void;

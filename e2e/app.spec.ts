@@ -68,7 +68,7 @@ test.describe("認証済みフロー", () => {
   });
 });
 
-test.describe("課金 UI（Free / トライアル / Plus）", () => {
+test.describe("課金 UI（Free / 体験期間 / Plus）", () => {
   test.afterAll(async () => {
     try {
       await setE2eUserBilling("trial");
@@ -77,7 +77,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
     }
   });
 
-  test("トライアル中は Plus 登録ボタンが表示され、お支払い管理は出ない", async ({
+  test("体験期間中は Plus 登録ボタンが表示され、お支払い管理は出ない", async ({
     page,
   }) => {
     await setE2eUserBilling("trial");
@@ -94,7 +94,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
     ).toBeHidden();
   });
 
-  test("トライアル終了後の Free でも Plus 登録ボタンが表示される", async ({
+  test("体験期間終了後の Free でも Plus 登録ボタンが表示される", async ({
     page,
   }) => {
     await setE2eUserBilling("free");
@@ -124,7 +124,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
     ).toBeHidden();
   });
 
-  test("トライアル中は Checkout API が成功し billing-portal は拒否される", async ({
+  test("体験期間中は Checkout API が成功し billing-portal は拒否される", async ({
     page,
   }) => {
     await setE2eUserBilling("trial");

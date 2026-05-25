@@ -134,7 +134,7 @@ test.describe("イレギュラーテスト — UI / 導線", () => {
 });
 
 test.describe("イレギュラーテスト — 保護者（Plus 制限）", () => {
-  test("トライアル終了 Free では保護者 onboarding がブロックされる", async ({
+  test("体験期間終了 Free では保護者 onboarding がブロックされる", async ({
     page,
   }) => {
     await setE2eUserBilling("free");
