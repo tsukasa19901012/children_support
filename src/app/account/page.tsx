@@ -31,7 +31,7 @@ async function fetchAccountData(userId: string) {
       .gte("created_at", getJSTDayStartISO()),
     db
       .from("children")
-      .select("id, name, birthday, gender")
+      .select("id, name, birthday, gender, profile_type")
       .eq("user_id", userId)
       .order("created_at"),
     db

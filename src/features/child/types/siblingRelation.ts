@@ -28,7 +28,8 @@ export type ChildPeerRelation =
   | "cousin_younger"
   | "second_cousin_older"
   | "second_cousin_younger"
-  | "friend";
+  | "friend"
+  | "guardian";
 
 /** @deprecated ChildPeerRelation を使用 */
 export type SiblingRelation = ChildPeerRelation;
@@ -55,6 +56,7 @@ const LABEL_MAP: Record<ChildPeerRelation, string> = {
   second_cousin_older: "年上の再従兄弟",
   second_cousin_younger: "年下の再従兄弟",
   friend: "友達",
+  guardian: "保護者",
 };
 
 export function relationLabel(relation: ChildPeerRelation): string {
@@ -97,10 +99,10 @@ export function resolvePeerRelation(
   return "friend";
 }
 
-/** DBの関係をフォーム選択値に戻す */
+/** DBの関係をフォーム選択値に戻す（guardian は関係フォーム対象外） */
 export function storedRelationToKind(
   relation: ChildPeerRelation
-): PeerRelationKind {
+): PeerRelationFormValue {
   switch (relation) {
     case "older_brother":
     case "older_sister":
@@ -117,6 +119,8 @@ export function storedRelationToKind(
       return "second_cousin";
     case "friend":
       return "friend";
+    case "guardian":
+      return RELATION_NONE;
     default:
       return "sibling";
   }
@@ -127,7 +131,9 @@ export function inverseRelation(
   relation: ChildPeerRelation,
   childGender: ChildGender
 ): ChildPeerRelation {
-  if (relation === "twin" || relation === "friend") return relation;
+  if (relation === "twin" || relation === "friend" || relation === "guardian") {
+    return relation;
+  }
 
   switch (relation) {
     case "older_brother":

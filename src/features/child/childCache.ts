@@ -1,7 +1,10 @@
+import type { ProfileType } from "./types/profileType";
+
 export type ChildInfo = {
   id: string;
   name: string;
-  birthday: string;
+  birthday: string | null;
+  profileType: ProfileType;
 };
 
 const CHILD_CACHE_KEY = "parenting_ai_children";
@@ -54,4 +57,8 @@ export function activeChildFromCache(
     cached.children[0] ??
     null
   );
+}
+
+export function hasRegisteredChild(children: ChildInfo[]): boolean {
+  return children.some((c) => c.profileType === "child");
 }

@@ -34,6 +34,7 @@ type ExistingChild = {
   name: string;
   birthday: string;
   gender: Gender | null;
+  profile_type?: string;
 };
 
 const GENDER_OPTIONS: { value: Gender; label: string; emoji: string }[] = [
@@ -111,11 +112,13 @@ function OnboardingForm() {
 
       const { data: children } = await supabase
         .from("children")
-        .select("id, name, birthday, gender")
+        .select("id, name, birthday, gender, profile_type")
         .eq("user_id", user.id)
         .order("created_at");
 
-      const list = (children ?? []) as ExistingChild[];
+      const list = (children ?? []).filter(
+        (c) => c.profile_type !== "caregiver"
+      ) as ExistingChild[];
       setExistingChildren(list);
 
       if (isSiblingsOnly && childIdParam) {
@@ -133,6 +136,7 @@ function OnboardingForm() {
 
         const init: Record<string, PeerRelationFormValue> = {};
         for (const r of rels ?? []) {
+          if (r.relation === "guardian") continue;
           init[r.sibling_id] = storedRelationToKind(
             r.relation as ChildPeerRelation
           );
@@ -178,7 +182,7 @@ function OnboardingForm() {
   const isFuture = isFutureDate(year, month, safeDay);
   const isOutsideRecommended =
     !isFuture && !isChildAgeInRecommendedRange(birthday);
-  const agePreview = isFuture ? "未来の日付です" : formatAge(birthday);
+  const agePreview = isFuture ? "未来の日付です" : (formatAge(birthday) ?? "—");
 
   const siblingTargets = useMemo(() => {
     const targetId = newChildId ?? childIdParam;
@@ -298,6 +302,7 @@ function OnboardingForm() {
         name: name.trim(),
         birthday,
         gender: selected,
+        profile_type: "child",
       })
       .select("id")
       .single();

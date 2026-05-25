@@ -5,6 +5,13 @@ import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessa
 import { hasPlusAccess, type UserBillingRow } from "../../../../features/billing/planAccess";
 import { createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { formatAge } from "../../../../lib/childAge";
+import {
+  buildCaregiverChildrenContextBlock,
+  buildCaregiverWeeklyReportPrompt,
+  type ProfileForPrompt,
+} from "../../../../features/child/lib/buildCaregiverPrompt";
+import { fetchGuardianChildIds } from "../../../../features/child/lib/guardianRelations";
+import type { ProfileType } from "../../../../features/child/types/profileType";
 
 const REPORT_PROMPT = (
   childName: string,
@@ -98,7 +105,7 @@ export async function POST(request: NextRequest) {
     try {
       const { data: children, error: childrenError } = await db
         .from("children")
-        .select("id, name, birthday, memory")
+        .select("id, name, birthday, memory, profile_type")
         .eq("user_id", user.id)
         .order("created_at");
 
@@ -112,9 +119,12 @@ export async function POST(request: NextRequest) {
 
       if (!children?.length) continue;
 
+      const allProfiles = children as ProfileForPrompt[];
+
       for (const child of children) {
         try {
-          const ageText = formatAge(child.birthday);
+          const profileType = (child.profile_type as ProfileType) ?? "child";
+          const ageText = formatAge(child.birthday) ?? "年齢未登録";
 
           const { data: rawWeekMessages } = await db
             .from("messages")
@@ -130,19 +140,35 @@ export async function POST(request: NextRequest) {
             ? sortMessagesByChatOrder(rawWeekMessages)
             : null;
 
+          let promptContent: string;
+          if (profileType === "caregiver") {
+            const linkedChildIds = await fetchGuardianChildIds(
+              db,
+              user.id,
+              child.id
+            );
+            const childrenContext = buildCaregiverChildrenContextBlock(
+              allProfiles,
+              linkedChildIds
+            );
+            promptContent = buildCaregiverWeeklyReportPrompt(
+              child.name,
+              childrenContext,
+              weekMessages ?? [],
+              child.memory ?? null
+            );
+          } else {
+            promptContent = REPORT_PROMPT(
+              child.name,
+              ageText,
+              weekMessages ?? [],
+              child.memory ?? null
+            );
+          }
+
           const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "user",
-                content: REPORT_PROMPT(
-                  child.name,
-                  ageText,
-                  weekMessages ?? [],
-                  child.memory ?? null
-                ),
-              },
-            ],
+            messages: [{ role: "user", content: promptContent }],
             max_tokens: 800,
           });
 

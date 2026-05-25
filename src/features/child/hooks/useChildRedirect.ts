@@ -6,10 +6,12 @@ import { createClient } from "../../../lib/supabase-browser";
 import { ensurePublicUserRow } from "../../auth/ensurePublicUserRow";
 import {
   activeChildFromCache,
+  hasRegisteredChild,
   loadChildCache,
   saveChildCache,
   type ChildInfo,
 } from "../childCache";
+import { PROFILE_TYPE_CHILD, type ProfileType } from "../types/profileType";
 
 export type { ChildInfo };
 
@@ -23,6 +25,7 @@ export function useChildRedirect(userId: string | null) {
   const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState<string | null>(null);
   const [childBirthday, setChildBirthday] = useState<string | null>(null);
+  const [profileType, setProfileType] = useState<ProfileType>(PROFILE_TYPE_CHILD);
   const [childChecked, setChildChecked] = useState(false);
   const [allChildren, setAllChildren] = useState<ChildInfo[]>([]);
 
@@ -35,6 +38,7 @@ export function useChildRedirect(userId: string | null) {
       setChildId(active.id);
       setChildName(active.name);
       setChildBirthday(active.birthday);
+      setProfileType(active.profileType);
       setChildChecked(true);
     },
     []
@@ -61,7 +65,7 @@ export function useChildRedirect(userId: string | null) {
         const [childrenRes, userRes] = await Promise.all([
           supabase
             .from("children")
-            .select("id, name, birthday")
+            .select("id, name, birthday, profile_type")
             .eq("user_id", userId)
             .order("created_at"),
           supabase
@@ -73,11 +77,25 @@ export function useChildRedirect(userId: string | null) {
 
         if (cancelled) return;
 
-        const children = childrenRes.data;
-        if (!children || children.length === 0) {
+        const rows = childrenRes.data;
+        if (!rows || !hasRegisteredChild(
+          rows.map((c) => ({
+            id: c.id,
+            name: c.name,
+            birthday: c.birthday as string | null,
+            profileType: (c.profile_type as ProfileType) ?? PROFILE_TYPE_CHILD,
+          }))
+        )) {
           router.replace("/onboarding");
           return;
         }
+
+        const children: ChildInfo[] = rows.map((c) => ({
+          id: c.id,
+          name: c.name,
+          birthday: c.birthday as string | null,
+          profileType: (c.profile_type as ProfileType) ?? PROFILE_TYPE_CHILD,
+        }));
 
         const activeId = userRes.data?.active_child_id as string | null;
         const active =
@@ -118,9 +136,18 @@ export function useChildRedirect(userId: string | null) {
       setChildId(target.id);
       setChildName(target.name);
       setChildBirthday(target.birthday);
+      setProfileType(target.profileType);
     },
     [userId, allChildren]
   );
 
-  return { childId, childName, childBirthday, childChecked, allChildren, switchChild };
+  return {
+    childId,
+    childName,
+    childBirthday,
+    profileType,
+    childChecked,
+    allChildren,
+    switchChild,
+  };
 }

@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ProfileType } from "../types/profileType";
 
 export type AccountChildRow = {
   id: string;
   name: string;
-  birthday: string;
+  birthday: string | null;
   gender: string | null;
+  profile_type: ProfileType;
 };
 
 export type AccountSiblingRelationRow = {
@@ -24,7 +26,7 @@ export async function loadAccountChildren(
   const [childrenRes, siblingRes, userRes] = await Promise.all([
     supabase
       .from("children")
-      .select("id, name, birthday, gender")
+      .select("id, name, birthday, gender, profile_type")
       .eq("user_id", userId)
       .order("created_at"),
     supabase
@@ -34,7 +36,7 @@ export async function loadAccountChildren(
     supabase.from("users").select("active_child_id").eq("id", userId).single(),
   ]);
 
-  const children = childrenRes.data ?? [];
+  const children = (childrenRes.data ?? []) as AccountChildRow[];
 
   return {
     children,
@@ -44,4 +46,8 @@ export async function loadAccountChildren(
       children[0]?.id ??
       null,
   };
+}
+
+export function countChildProfiles(children: AccountChildRow[]): number {
+  return children.filter((c) => c.profile_type === "child").length;
 }

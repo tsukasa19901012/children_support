@@ -1,8 +1,0 @@
--- ⚠️ このファイルは一括実行しないでください（enum 55P04 エラーになります）
---
--- 既存本番 DB の移行は、次の 2 ファイルを順番に「それぞれ単体で」実行:
---
---   1. 20260520_plan_plus_trial_step1_enum.sql   … plan_type に plus 追加
---   2. 20260520_plan_plus_trial_step2_migrate.sql  … lite/pro 移行・トリガー更新
---
--- 詳細: supabase/migrations/README.md

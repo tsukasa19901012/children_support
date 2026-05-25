@@ -61,6 +61,7 @@ export async function saveChildSiblingRelations(
     .from("child_sibling_relations")
     .delete()
     .eq("user_id", userId)
+    .neq("relation", "guardian")
     .or(`child_id.eq.${childId},sibling_id.eq.${childId}`);
 
   if (delError) return { error: delError.message };

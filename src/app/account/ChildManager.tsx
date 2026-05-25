@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase-browser";
 import { formatAge } from "../../lib/childAge";
 import { loadChildCache, saveChildCache } from "../../features/child/childCache";
-import {
-  markAccountReturnStack,
-} from "../../features/account/hooks/useAccountReturn";
+import { markAccountReturnStack } from "../../features/account/hooks/useAccountReturn";
 import {
   loadAccountChildren,
   type AccountChildRow,
@@ -17,6 +15,10 @@ import {
   relationLabel,
   type SiblingRelation,
 } from "../../features/child/types/siblingRelation";
+import {
+  PROFILE_TYPE_CAREGIVER,
+  PROFILE_TYPE_CHILD,
+} from "../../features/child/types/profileType";
 import { DeleteChildConfirmDialog } from "../../features/child/components/DeleteChildConfirmDialog";
 import { deleteChild } from "../../features/child/lib/deleteChild";
 
@@ -45,6 +47,15 @@ function activeChildFromCache(userId: string): string | null {
   return loadChildCache(userId)?.activeChildId ?? null;
 }
 
+function toCacheRows(children: ChildRow[]) {
+  return children.map((c) => ({
+    id: c.id,
+    name: c.name,
+    birthday: c.birthday,
+    profileType: c.profile_type,
+  }));
+}
+
 export function ChildManager({
   hasPlusFeatures,
   userId,
@@ -65,6 +76,17 @@ export function ChildManager({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  const childProfiles = useMemo(
+    () => children.filter((c) => c.profile_type === PROFILE_TYPE_CHILD),
+    [children]
+  );
+  const caregiverProfile = useMemo(
+    () => children.find((c) => c.profile_type === PROFILE_TYPE_CAREGIVER) ?? null,
+    [children]
+  );
+  const childProfileCount = childProfiles.length;
+  const hasMultipleProfiles = children.length > 1;
+
   const reloadChildren = useCallback(async () => {
     const supabase = createClient();
     const data = await loadAccountChildren(supabase, userId);
@@ -72,15 +94,7 @@ export function ChildManager({
     setActiveChildId(data.activeChildId);
     setRelations(data.siblingRelations);
     if (data.activeChildId && data.children.length > 0) {
-      saveChildCache(
-        userId,
-        data.children.map((c) => ({
-          id: c.id,
-          name: c.name,
-          birthday: c.birthday,
-        })),
-        data.activeChildId
-      );
+      saveChildCache(userId, toCacheRows(data.children), data.activeChildId);
     }
   }, [userId]);
 
@@ -112,22 +126,20 @@ export function ChildManager({
       .eq("id", userId);
     if (!error) {
       setActiveChildId(childId);
-      saveChildCache(
-        userId,
-        children.map((c) => ({ id: c.id, name: c.name, birthday: c.birthday })),
-        childId
-      );
+      saveChildCache(userId, toCacheRows(children), childId);
       router.push("/");
     }
     setSwitching(null);
   };
 
-  const hasMultiple = children.length > 1;
-  const canDelete = children.length > 1;
-  const needsSelection = !hasPlusFeatures && hasMultiple;
+  const needsSelection = !hasPlusFeatures && hasMultipleProfiles;
+  const canDeleteChild = childProfileCount > 1;
 
   const confirmDelete = async () => {
-    if (!deleteTarget || !canDelete) return;
+    if (!deleteTarget) return;
+    const isChild = deleteTarget.profile_type === PROFILE_TYPE_CHILD;
+    if (isChild && !canDeleteChild) return;
+
     setDeleting(true);
     setDeleteError("");
     const supabase = createClient();
@@ -135,7 +147,8 @@ export function ChildManager({
       supabase,
       userId,
       deleteTarget.id,
-      children.length
+      deleteTarget.profile_type,
+      childProfileCount
     );
     if (error) {
       setDeleteError(error);
@@ -161,132 +174,185 @@ export function ChildManager({
 
   const peerRelations = (childId: string) =>
     relations
-      .filter((r) => r.child_id === childId)
+      .filter((r) => r.child_id === childId && r.relation !== "guardian")
       .map((r) => ({
         key: r.sibling_id,
         relation: relationLabel(r.relation as SiblingRelation),
         name: childNameMap.get(r.sibling_id) ?? "お子さん",
+        isCaregiver:
+          children.find((c) => c.id === r.sibling_id)?.profile_type ===
+          PROFILE_TYPE_CAREGIVER,
       }));
+
+  const guardianChildNames = (caregiverId: string) =>
+    relations
+      .filter(
+        (r) => r.sibling_id === caregiverId && r.relation === "guardian"
+      )
+      .map((r) => childNameMap.get(r.child_id) ?? "お子さん");
+
+  const renderProfileCard = (profile: ChildRow, isCaregiver: boolean) => {
+    const isActive = profile.id === activeChildId;
+    const peers = isCaregiver ? [] : peerRelations(profile.id);
+    const guardianNames = isCaregiver
+      ? guardianChildNames(profile.id)
+      : [];
+    const showPeers =
+      !isCaregiver &&
+      hasPlusFeatures &&
+      childProfiles.length > 1 &&
+      peers.length > 0;
+    const canDelete = isCaregiver || canDeleteChild;
+
+    return (
+      <div
+        key={profile.id}
+        className={`rounded-2xl border px-4 py-3 transition-colors ${
+          isActive ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-white"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "bg-blue-500" : "bg-gray-300"}`}
+          />
+          <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800 truncate">
+                {profile.name}
+                {isCaregiver ? (
+                  <span className="ml-1 text-xs font-normal text-emerald-600">
+                    保護者
+                  </span>
+                ) : (
+                  profile.gender && (
+                    <span className="ml-1 text-xs font-normal text-gray-400">
+                      {GENDER_LABEL[profile.gender] ?? ""}
+                    </span>
+                  )
+                )}
+              </p>
+              <p className="text-xs text-gray-400">
+                {isCaregiver
+                  ? formatAge(profile.birthday) ?? "年齢未登録"
+                  : (formatAge(profile.birthday) ?? "年齢未登録")}
+              </p>
+            </div>
+            {isActive ? (
+              <span className="shrink-0 text-xs text-blue-500 font-medium whitespace-nowrap">
+                ✓ 相談中
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={switching === profile.id}
+                onClick={() => handleSwitch(profile.id)}
+                className="shrink-0 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors"
+              >
+                {switching === profile.id
+                  ? "切り替え中..."
+                  : needsSelection
+                    ? isCaregiver
+                      ? "自分で相談"
+                      : "この子で相談"
+                    : "相談に切り替え"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {isCaregiver && guardianNames.length > 0 && (
+          <ul
+            className="mt-3 ml-5 space-y-2 border-l-2 border-emerald-100 pl-3"
+            aria-label="保護者として登録しているお子さん"
+          >
+            {guardianNames.map((name) => (
+              <li key={name} className="text-xs text-gray-700">
+                <span className="inline-block rounded-md bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[11px] font-medium">
+                  保護者
+                </span>
+                <span className="ml-2">{name}ちゃん</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {showPeers && (
+          <ul
+            className="mt-3 ml-5 space-y-2 border-l-2 border-violet-100 pl-3"
+            aria-label="登録されている関係"
+          >
+            {peers.map((peer) => (
+              <li key={peer.key} className="text-xs leading-relaxed">
+                <span className="inline-block rounded-md bg-violet-100 text-violet-700 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap">
+                  {peer.relation}
+                </span>
+                <span className="text-gray-700 ml-2 break-words">
+                  {peer.name}
+                  {peer.isCaregiver ? "さん" : "ちゃん"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-3 pt-3 flex flex-wrap gap-2 border-t border-gray-100">
+          {!isCaregiver && hasPlusFeatures && childProfiles.length > 1 && (
+            <button
+              type="button"
+              onClick={() =>
+                goToOnboarding(
+                  `/onboarding?mode=siblings&childId=${profile.id}`
+                )
+              }
+              className={`${actionBtn} text-violet-600 bg-violet-50 hover:bg-violet-100`}
+            >
+              関係を編集
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              goToOnboarding(
+                isCaregiver
+                  ? `/onboarding/caregiver?mode=edit&caregiverId=${profile.id}`
+                  : `/onboarding?mode=edit&childId=${profile.id}`
+              )
+            }
+            className={`${actionBtn} text-gray-700 bg-gray-50 hover:bg-gray-100`}
+          >
+            編集
+          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError("");
+                setDeleteTarget(profile);
+              }}
+              className={`${actionBtn} text-red-600 bg-red-50 hover:bg-red-100`}
+            >
+              削除
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className={`space-y-3 ${syncing ? "opacity-70" : ""}`}>
       {needsSelection && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs text-amber-700 font-medium mb-0.5">
-            いま相談するお子さんを選んでください
+            いま相談するプロフィールを選んでください
           </p>
           <p className="text-xs text-amber-600">
-            無料プランでは1人分のみ相談できます。Plusに戻ると登録済みのお子さんをすべて使えます
+            無料プランでは1人分のみ相談できます。Plusに戻ると登録済みのプロフィールをすべて使えます
           </p>
         </div>
       )}
 
-      {children.map((child) => {
-        const isActive = child.id === activeChildId;
-        const peers = peerRelations(child.id);
-        const showPeers = hasPlusFeatures && hasMultiple && peers.length > 0;
-
-        return (
-          <div
-            key={child.id}
-            className={`rounded-2xl border px-4 py-3 transition-colors ${
-              isActive ? "border-blue-300 bg-blue-50" : "border-gray-100 bg-white"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "bg-blue-500" : "bg-gray-300"}`}
-              />
-              <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">
-                    {child.name}
-                    {child.gender && (
-                      <span className="ml-1 text-xs font-normal text-gray-400">
-                        {GENDER_LABEL[child.gender] ?? ""}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
-                </div>
-                {isActive ? (
-                  <span className="shrink-0 text-xs text-blue-500 font-medium whitespace-nowrap">
-                    ✓ 相談中
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={switching === child.id}
-                    onClick={() => handleSwitch(child.id)}
-                    className="shrink-0 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors"
-                  >
-                    {switching === child.id
-                      ? "切り替え中..."
-                      : needsSelection
-                        ? "この子で相談"
-                        : "相談に切り替え"}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {showPeers && (
-              <ul
-                className="mt-3 ml-5 space-y-2 border-l-2 border-violet-100 pl-3"
-                aria-label="登録されている関係"
-              >
-                {peers.map((peer) => (
-                  <li key={peer.key} className="text-xs leading-relaxed">
-                    <span className="inline-block rounded-md bg-violet-100 text-violet-700 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap">
-                      {peer.relation}
-                    </span>
-                    <span className="text-gray-700 ml-2 break-words">
-                      {peer.name}ちゃん
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="mt-3 pt-3 flex flex-wrap gap-2 border-t border-gray-100">
-              {hasPlusFeatures && hasMultiple && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    goToOnboarding(
-                      `/onboarding?mode=siblings&childId=${child.id}`
-                    )
-                  }
-                  className={`${actionBtn} text-violet-600 bg-violet-50 hover:bg-violet-100`}
-                >
-                  関係を編集
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() =>
-                  goToOnboarding(`/onboarding?mode=edit&childId=${child.id}`)
-                }
-                className={`${actionBtn} text-gray-700 bg-gray-50 hover:bg-gray-100`}
-              >
-                編集
-              </button>
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeleteError("");
-                    setDeleteTarget(child);
-                  }}
-                  className={`${actionBtn} text-red-600 bg-red-50 hover:bg-red-100`}
-                >
-                  削除
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
+      {childProfiles.map((child) => renderProfileCard(child, false))}
 
       {hasPlusFeatures && (
         <button
@@ -295,17 +361,40 @@ export function ChildManager({
           className="w-full flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-2xl py-3 text-sm text-gray-400 hover:text-gray-600 hover:border-gray-400 transition-colors"
         >
           <span className="text-lg leading-none">+</span>
-          子どもを追加する
+          お子さんを追加する
         </button>
+      )}
+
+      {hasPlusFeatures && (
+        <div className="pt-2 space-y-3">
+          <p className="text-xs font-medium text-gray-500 px-1">
+            保護者（自分）の相談
+          </p>
+          {caregiverProfile ? (
+            renderProfileCard(caregiverProfile, true)
+          ) : (
+            <button
+              type="button"
+              onClick={() => goToOnboarding("/onboarding/caregiver?mode=add")}
+              className="w-full flex items-center justify-center gap-2 border border-dashed border-emerald-200 rounded-2xl py-3 text-sm text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 transition-colors"
+            >
+              <span className="text-lg leading-none">+</span>
+              保護者（自分）を追加する
+            </button>
+          )}
+          <p className="text-xs text-gray-400 text-center leading-relaxed">
+            自分の気持ちや疲れについて相談できます。登録済みのお子さんの情報も踏まえて回答します。
+          </p>
+        </div>
       )}
 
       {needsSelection && (
         <p className="text-xs text-center text-gray-400 pt-1">
-          Plusなら、お子さんごとの相談と、関係の登録が使えます
+          Plusなら、お子さんごとの相談と、保護者自身の相談が使えます
         </p>
       )}
 
-      {!canDelete && children.length === 1 && (
+      {!canDeleteChild && childProfileCount === 1 && (
         <p className="text-xs text-center text-gray-400 pt-1">
           お子さんが1人のときは削除できません
         </p>

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ProfileType } from "../types/profileType";
 
 const LAST_CHILD_ERROR = "最後のお子さんは削除できません";
 
@@ -6,9 +7,10 @@ export async function deleteChild(
   supabase: SupabaseClient,
   userId: string,
   childId: string,
-  childCount: number
+  profileType: ProfileType,
+  childProfileCount: number
 ): Promise<{ error: string | null }> {
-  if (childCount <= 1) {
+  if (profileType === "child" && childProfileCount <= 1) {
     return { error: LAST_CHILD_ERROR };
   }
 

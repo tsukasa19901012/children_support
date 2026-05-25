@@ -9,7 +9,16 @@ import {
   createServiceSupabaseClient,
 } from "../../../lib/supabase-server";
 import { buildSiblingPromptBlock } from "../../../features/child/lib/buildSiblingPrompt";
+import {
+  buildCaregiverContext,
+  buildCaregiverMemoryExtractPrompt,
+  buildCaregiverSystemPrompt,
+  buildCaregiverChildrenContextBlock,
+  type ProfileForPrompt,
+} from "../../../features/child/lib/buildCaregiverPrompt";
+import { fetchGuardianChildIds } from "../../../features/child/lib/guardianRelations";
 import type { ChildPeerRelation } from "../../../features/child/types/siblingRelation";
+import type { ProfileType } from "../../../features/child/types/profileType";
 import type OpenAI from "openai";
 
 type Message = {
@@ -74,7 +83,7 @@ async function fetchSiblingPromptBlock(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!activeChild) return null;
+  if (!activeChild?.birthday) return null;
 
   const { data: rels } = await db
     .from("child_sibling_relations")
@@ -113,47 +122,58 @@ async function fetchSiblingPromptBlock(
   );
 }
 
-/** 子どものメモリをDBから取得する。user_id で所有権を検証。 */
-async function fetchChildMemory(childId: string, userId: string): Promise<{ id: string; memory: string | null } | null> {
+/** 子ども/保護者プロフィールをDBから取得する。user_id で所有権を検証。 */
+async function fetchProfileMemory(
+  childId: string,
+  userId: string
+): Promise<{
+  id: string;
+  name: string;
+  birthday: string | null;
+  profile_type: ProfileType;
+  memory: string | null;
+} | null> {
   const db = createServiceSupabaseClient();
   const { data } = await db
     .from("children")
-    .select("id, memory")
+    .select("id, name, birthday, profile_type, memory")
     .eq("id", childId)
-    .eq("user_id", userId)   // 他人の子どもへのアクセスを防止
+    .eq("user_id", userId)
     .maybeSingle();
   return data ?? null;
 }
 
+async function fetchUserProfilesForPrompt(
+  userId: string
+): Promise<ProfileForPrompt[]> {
+  const db = createServiceSupabaseClient();
+  const { data } = await db
+    .from("children")
+    .select("id, name, birthday, profile_type, memory")
+    .eq("user_id", userId)
+    .order("created_at");
+  return (data ?? []) as ProfileForPrompt[];
+}
+
 /** 会話内容からメモリを更新する（非同期・非致命的）。user_id で所有権を検証。 */
-async function updateChildMemory(
-  childId: string,
+async function updateProfileMemory(
+  profileId: string,
   userId: string,
+  profileType: ProfileType,
   currentMemory: string | null,
   userMessage: string,
   aiMessage: string,
   openai: OpenAI
 ): Promise<void> {
   try {
-    const memoryPrompt = currentMemory
-      ? `以下は子どもについての既存の学習メモです:\n${currentMemory}\n\n`
-      : "";
-
-    const extractPrompt = `${memoryPrompt}以下の育児相談の会話から、子どもの性格・特徴・家庭環境・よくある悩みに関する新たな情報を抽出し、学習メモを更新してください。
-重複は排除し、400文字以内で以下の形式でまとめてください（該当なければ省略可）:
-
-【子どもの特徴】
-- （性格・行動パターンなど）
-
-【家庭環境】
-- （家族構成・生活スタイルなど）
-
-【よくある悩み・傾向】
-- （睡眠・食事・癇癪・兄弟関係など）
-
----
-保護者の相談: ${userMessage}
-AIの回答: ${aiMessage}`;
+    const extractPrompt =
+      profileType === "caregiver"
+        ? buildCaregiverMemoryExtractPrompt(
+            currentMemory,
+            userMessage,
+            aiMessage
+          )
+        : buildChildMemoryExtractPrompt(currentMemory, userMessage, aiMessage);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -168,11 +188,37 @@ AIの回答: ${aiMessage}`;
     await db
       .from("children")
       .update({ memory: newMemory, updated_at: new Date().toISOString() })
-      .eq("id", childId)
-      .eq("user_id", userId); // 所有権を再確認して更新
+      .eq("id", profileId)
+      .eq("user_id", userId);
   } catch (err) {
     console.warn("[/api/chat] メモリ更新失敗（非致命的）:", err);
   }
+}
+
+function buildChildMemoryExtractPrompt(
+  currentMemory: string | null,
+  userMessage: string,
+  aiMessage: string
+): string {
+  const memoryPrompt = currentMemory
+    ? `以下は子どもについての既存の学習メモです:\n${currentMemory}\n\n`
+    : "";
+
+  return `${memoryPrompt}以下の育児相談の会話から、子どもの性格・特徴・家庭環境・よくある悩みに関する新たな情報を抽出し、学習メモを更新してください。
+重複は排除し、400文字以内で以下の形式でまとめてください（該当なければ省略可）:
+
+【子どもの特徴】
+- （性格・行動パターンなど）
+
+【家庭環境】
+- （家族構成・生活スタイルなど）
+
+【よくある悩み・傾向】
+- （睡眠・食事・癇癪・兄弟関係など）
+
+---
+保護者の相談: ${userMessage}
+AIの回答: ${aiMessage}`;
 }
 
 function getUpgradeMessage(dailyLimit: number): string {
@@ -319,7 +365,10 @@ export async function POST(request: NextRequest) {
     const billing = await fetchUserBilling(userId);
     const plan = getPlan(billing.planId);
     const dailyLimit = billing.hasPlusAccess ? null : plan.dailyLimit;
-    const childMemoryData = childId ? await fetchChildMemory(childId, userId) : null;
+    const profileData = childId ? await fetchProfileMemory(childId, userId) : null;
+    const childMemoryData = profileData
+      ? { id: profileData.id, memory: profileData.memory }
+      : null;
 
     // 4. 無料枠の回数制限チェック（競合状態対策：先にDB挿入して原子的にカウント）
     const db = createServiceSupabaseClient();
@@ -378,15 +427,35 @@ export async function POST(request: NextRequest) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const MODEL = "gpt-4o-mini";
-    const siblingBlock =
-      canUseRelations(billing.row) && childId
-        ? await fetchSiblingPromptBlock(childId, userId)
-        : null;
-    const systemPrompt = buildSystemPrompt(
-      childContext,
-      childMemoryData?.memory,
-      siblingBlock
-    );
+    const isCaregiver = profileData?.profile_type === "caregiver";
+
+    let systemPrompt: string;
+    if (isCaregiver && profileData) {
+      const [allProfiles, linkedChildIds] = await Promise.all([
+        fetchUserProfilesForPrompt(userId),
+        fetchGuardianChildIds(db, userId, profileData.id),
+      ]);
+      const childrenBlock = buildCaregiverChildrenContextBlock(
+        allProfiles,
+        linkedChildIds
+      );
+      systemPrompt = buildCaregiverSystemPrompt(
+        buildCaregiverContext(profileData.name, profileData.birthday),
+        childrenBlock,
+        profileData.memory
+      );
+    } else {
+      const siblingBlock =
+        canUseRelations(billing.row) && childId && !isCaregiver
+          ? await fetchSiblingPromptBlock(childId, userId)
+          : null;
+      systemPrompt = buildSystemPrompt(
+        childContext,
+        childMemoryData?.memory,
+        siblingBlock
+      );
+    }
+
     const completion = await openai.chat.completions.create({
       model: MODEL,
       messages: [
@@ -400,11 +469,12 @@ export async function POST(request: NextRequest) {
 
     // 7. Plus/トライアル: メモリを非同期更新（Freeは読み取りのみ）
     const effectiveChildId = childMemoryData?.id ?? childId ?? null;
-    if (billing.canUpdateMemory && effectiveChildId && lastUserMessage) {
-      void updateChildMemory(
+    if (billing.canUpdateMemory && effectiveChildId && lastUserMessage && profileData) {
+      void updateProfileMemory(
         effectiveChildId,
         userId,
-        childMemoryData?.memory ?? null,
+        profileData.profile_type,
+        profileData.memory ?? null,
         lastUserMessage.content,
         aiMessage,
         openai

@@ -31,7 +31,6 @@ create policy "users: select own"
   on public.users for select
   using (id = auth.uid());
 
--- plan 列はクライアントから直接書き換え不可（service_role のみ更新可）
 create policy "users: update own (non-plan columns)"
   on public.users for update
   using (id = auth.uid())
@@ -49,17 +48,20 @@ revoke update (plan) on public.users from authenticated;
 -- 3. children テーブル
 -- ────────────────────────────────────────
 create table if not exists public.children (
-  id         uuid        primary key default gen_random_uuid(),
-  user_id    uuid        not null references public.users(id) on delete cascade,
-  name       text        not null,
-  birthday   date        not null,
-  gender     text        check (gender in ('male', 'female', 'other')),
-  memory     text,                -- 会話から学習した子ども・家庭の特徴（Plusで更新）
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id            uuid        primary key default gen_random_uuid(),
+  user_id       uuid        not null references public.users(id) on delete cascade,
+  name          text        not null,
+  birthday      date,
+  gender        text        check (gender in ('male', 'female', 'other')),
+  profile_type  text        not null default 'child' check (profile_type in ('child', 'caregiver')),
+  memory        text,                -- 会話から学習した子ども・家庭の特徴（Plusで更新）
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
 );
 
--- unique 制約なし（Plus プランは複数子ども登録可能）
+create unique index if not exists children_one_caregiver_per_user
+  on public.children (user_id)
+  where profile_type = 'caregiver';
 
 alter table public.children enable row level security;
 
@@ -88,9 +90,14 @@ as $$
 declare
   remaining int;
 begin
+  if OLD.profile_type <> 'child' then
+    return OLD;
+  end if;
+
   select count(*) into remaining
   from public.children
   where user_id = OLD.user_id
+    and profile_type = 'child'
     and id <> OLD.id;
 
   if remaining < 1 then
@@ -128,7 +135,6 @@ create table if not exists public.messages (
   created_at timestamptz  not null default now()
 );
 
--- インデックス
 create index messages_user_id_created_at_idx
   on public.messages(user_id, created_at asc);
 create index messages_child_id_created_at_idx
@@ -173,7 +179,7 @@ create policy "token_usage: select own"
 
 
 -- ────────────────────────────────────────
--- 7. 子ども数制限トリガー
+-- 7. 子ども数・保護者プロフィール制限トリガー
 --    Plus または14日トライアル中のみ複数登録可
 -- ────────────────────────────────────────
 create or replace function public.check_children_plan_limit()
@@ -186,18 +192,36 @@ declare
   trial_end      timestamptz;
   user_created   timestamptz;
   children_count int;
+  caregiver_count int;
 begin
   select plan, trial_ends_at, created_at
   into user_plan, trial_end, user_created
   from public.users
   where id = NEW.user_id;
 
-  if user_plan = 'plus' then
+  if trial_end is null then
+    trial_end := user_created + interval '14 days';
+  end if;
+
+  if NEW.profile_type = 'caregiver' then
+    if user_plan <> 'plus' and now() >= trial_end then
+      raise exception '保護者プロフィールの登録にはPlusプランが必要です。';
+    end if;
+
+    select count(*) into caregiver_count
+    from public.children
+    where user_id = NEW.user_id
+      and profile_type = 'caregiver';
+
+    if caregiver_count >= 1 then
+      raise exception '保護者プロフィールは1人まで登録できます。';
+    end if;
+
     return NEW;
   end if;
 
-  if trial_end is null then
-    trial_end := user_created + interval '14 days';
+  if user_plan = 'plus' then
+    return NEW;
   end if;
 
   if now() < trial_end then
@@ -206,7 +230,8 @@ begin
 
   select count(*) into children_count
   from public.children
-  where user_id = NEW.user_id;
+  where user_id = NEW.user_id
+    and profile_type = 'child';
 
   if children_count >= 1 then
     raise exception '無料プラン（トライアル終了後）はお子さんを1人しか登録できません。Plusプランへのアップグレードが必要です。';
@@ -222,7 +247,7 @@ create trigger children_plan_limit_check
 
 
 -- ────────────────────────────────────────
--- 8. きょうだい関係（Plus・複数子ども）
+-- 8. きょうだい・保護者関係（Plus・複数子ども）
 -- ────────────────────────────────────────
 create table if not exists public.child_sibling_relations (
   id          uuid        primary key default gen_random_uuid(),
@@ -233,7 +258,8 @@ create table if not exists public.child_sibling_relations (
     'older_brother', 'older_sister', 'younger_brother', 'younger_sister', 'twin',
     'cousin_older', 'cousin_younger',
     'second_cousin_older', 'second_cousin_younger',
-    'friend'
+    'friend',
+    'guardian'
   )),
   created_at  timestamptz not null default now(),
   unique (child_id, sibling_id),
@@ -263,3 +289,31 @@ create policy "child_sibling_relations: update own"
 create policy "child_sibling_relations: delete own"
   on public.child_sibling_relations for delete
   using (user_id = auth.uid());
+
+
+-- ────────────────────────────────────────
+-- 9. auth.users → public.users 自動作成
+-- ────────────────────────────────────────
+insert into public.users (id)
+select id from auth.users
+on conflict (id) do nothing;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id)
+  values (new.id)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();

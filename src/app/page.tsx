@@ -14,7 +14,9 @@ import { useAutoResizeTextarea } from "../hooks/useAutoResizeTextarea";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import { CHAT_HEADER_FALLBACK } from "../lib/brand";
 import { BrandMark } from "../features/auth/components/BrandMark";
-import { formatAge, buildChildContext } from "../lib/childAge";
+import { formatAge, formatProfileHeaderLabel, buildChildContext } from "../lib/childAge";
+import { buildCaregiverContext } from "../features/child/lib/buildCaregiverPrompt";
+import { PROFILE_TYPE_CAREGIVER } from "../features/child/types/profileType";
 import { getPlan } from "../features/billing/plans";
 import { shouldShowUpgradeCta } from "../features/billing/billingUi";
 import { DeleteConfirmDialog } from "../features/chat/components/DeleteConfirmDialog";
@@ -32,7 +34,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [showChildPicker, setShowChildPicker] = useState(false);
   const { userId } = useAuthUserId();
-  const { childId, childName, childBirthday, childChecked, allChildren, switchChild } = useChildRedirect(userId);
+  const { childId, childName, childBirthday, profileType, childChecked, allChildren, switchChild } = useChildRedirect(userId);
   const {
     canSend,
     remaining,
@@ -82,8 +84,10 @@ export default function Home() {
             role: m.role === "user" ? "user" : "assistant",
             content: m.text,
           })),
-          childContext: childName && childBirthday
-            ? buildChildContext(childName, childBirthday)
+          childContext: childName
+            ? profileType === PROFILE_TYPE_CAREGIVER
+              ? buildCaregiverContext(childName, childBirthday)
+              : buildChildContext(childName, childBirthday)
             : undefined,
           childId: childId ?? undefined,
         }),
@@ -181,6 +185,9 @@ export default function Home() {
   const showUpgradeCta = planLoaded && shouldShowUpgradeCta(planId);
   const inputDisabled = loading || isLimited;
   const dailyLimit = hasPlusAccess ? null : getPlan("free").dailyLimit;
+  const headerLabel = childName
+    ? formatProfileHeaderLabel(childName, childBirthday, profileType)
+    : CHAT_HEADER_FALLBACK;
 
   // 子ども情報の確認が終わるまでローディング
   if (userId && !childChecked) {
@@ -207,21 +214,13 @@ export default function Home() {
               onClick={() => setShowChildPicker((v) => !v)}
               className="flex items-center gap-0.5 max-w-full font-bold text-sm text-gray-800 active:opacity-70"
             >
-              <span className="truncate">
-                {childName && childBirthday
-                  ? `${childName}（${formatAge(childBirthday)}）`
-                  : CHAT_HEADER_FALLBACK}
-              </span>
+              <span className="truncate">{headerLabel}</span>
               <span className="text-gray-400 text-[10px] shrink-0">
                 {showChildPicker ? "▲" : "▼"}
               </span>
             </button>
           ) : (
-            <p className="truncate font-bold text-sm text-gray-800">
-              {childName && childBirthday
-                ? `${childName}（${formatAge(childBirthday)}）`
-                : CHAT_HEADER_FALLBACK}
-            </p>
+            <p className="truncate font-bold text-sm text-gray-800">{headerLabel}</p>
           )}
 
           {showChildPicker && (
@@ -249,7 +248,13 @@ export default function Home() {
                     <BrandMark size="sm" />
                     <div>
                       <p className="text-sm font-medium">{child.name}</p>
-                      <p className="text-xs text-gray-400">{formatAge(child.birthday)}</p>
+                      <p className="text-xs text-gray-400">
+                        {child.profileType === PROFILE_TYPE_CAREGIVER
+                          ? formatAge(child.birthday)
+                            ? `保護者・${formatAge(child.birthday)}`
+                            : "保護者"
+                          : (formatAge(child.birthday) ?? "")}
+                      </p>
                     </div>
                     {child.id === childId && (
                       <span className="ml-auto text-blue-500 text-xs font-bold">表示中</span>
