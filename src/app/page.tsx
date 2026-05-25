@@ -183,7 +183,8 @@ export default function Home() {
   };
 
   const showUpgradeCta = planLoaded && shouldShowUpgradeCta(planId);
-  const inputDisabled = loading || isLimited || !input.trim();
+  const inputDisabled = loading || isLimited;
+  const sendDisabled = inputDisabled || !input.trim();
   const dailyLimit = hasPlusAccess ? null : getPlan("free").dailyLimit;
   const headerLabel = childName
     ? formatProfileHeaderLabel(childName, childBirthday, profileType)
@@ -409,7 +410,7 @@ export default function Home() {
           <button
             type="button"
             onClick={sendMessage}
-            disabled={inputDisabled}
+            disabled={sendDisabled}
             className="shrink-0 mb-0.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors"
           >
             送信
