@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   birthYearOptions,
   BIRTH_YEAR_SELECT_SPAN,
+  caregiverBirthYearOptions,
+  CAREGIVER_BIRTH_YEAR_MIN,
   isChildAgeInRecommendedRange,
   RECOMMENDED_MAX_CHILD_AGE_YEARS,
 } from "./childAge";
@@ -32,5 +34,13 @@ describe("childAge recommended range (0〜6歳)", () => {
     const years = birthYearOptions(new Date("2026-06-01"));
     expect(years.length).toBeGreaterThan(RECOMMENDED_MAX_CHILD_AGE_YEARS + 1);
     expect(years).toHaveLength(BIRTH_YEAR_SELECT_SPAN);
+  });
+
+  it("caregiverBirthYearOptions spans well beyond child span (no age cap)", () => {
+    const ref = new Date("2026-06-01");
+    const childYears = birthYearOptions(ref);
+    const caregiverYears = caregiverBirthYearOptions(ref);
+    expect(caregiverYears.length).toBeGreaterThan(childYears.length);
+    expect(caregiverYears.at(-1)).toBe(CAREGIVER_BIRTH_YEAR_MIN);
   });
 });

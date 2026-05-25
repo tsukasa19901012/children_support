@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAccountReturn } from "../../../features/account/hooks/useAccountReturn";
 import { createClient } from "../../../lib/supabase-browser";
 import {
-  birthYearOptions,
+  caregiverBirthYearOptions,
   formatAge,
 } from "../../../lib/childAge";
 import { hasPlusAccess } from "../../../features/billing/planAccess";
@@ -35,7 +35,7 @@ const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
 const CURRENT_MONTH = NOW.getMonth() + 1;
 const CURRENT_DAY = NOW.getDate();
-const YEARS = birthYearOptions(NOW);
+const YEARS = caregiverBirthYearOptions(NOW);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 function daysInMonth(year: number, month: number) {

@@ -23,10 +23,19 @@ export function isChildAgeInRecommendedRange(birthday: string): boolean {
 /** @deprecated isChildAgeInRecommendedRange を使用 */
 export const isChildAgeInTargetRange = isChildAgeInRecommendedRange;
 
-/** 誕生日選択用の年リスト */
+/** 誕生日選択用の年リスト（お子さん向け・過去12年） */
 export function birthYearOptions(referenceDate = new Date()): number[] {
   const y = referenceDate.getFullYear();
   return Array.from({ length: BIRTH_YEAR_SELECT_SPAN }, (_, i) => y - i);
+}
+
+/** 保護者の誕生日選択: 1920年〜現在（年齢上限なし） */
+export const CAREGIVER_BIRTH_YEAR_MIN = 1920;
+
+export function caregiverBirthYearOptions(referenceDate = new Date()): number[] {
+  const y = referenceDate.getFullYear();
+  const minYear = Math.min(CAREGIVER_BIRTH_YEAR_MIN, y);
+  return Array.from({ length: y - minYear + 1 }, (_, i) => y - i);
 }
 
 /**
