@@ -127,18 +127,24 @@ alter table public.users
 -- 5. messages テーブル
 -- ────────────────────────────────────────
 create table if not exists public.messages (
-  id         uuid         primary key default gen_random_uuid(),
-  user_id    uuid         not null references public.users(id) on delete cascade,
-  child_id   uuid         references public.children(id) on delete set null,
-  role       message_role not null,
-  content    text         not null,
-  created_at timestamptz  not null default now()
+  id                  uuid         primary key default gen_random_uuid(),
+  user_id             uuid         not null references public.users(id) on delete cascade,
+  child_id            uuid         references public.children(id) on delete set null,
+  role                message_role not null,
+  content             text         not null,
+  message_type        text         not null default 'chat' check (message_type in ('chat', 'weekly_report')),
+  report_period_start date,
+  report_period_end   date,
+  created_at          timestamptz  not null default now()
 );
 
 create index messages_user_id_created_at_idx
   on public.messages(user_id, created_at asc);
 create index messages_child_id_created_at_idx
   on public.messages(child_id, created_at asc);
+create index messages_weekly_report_user_idx
+  on public.messages(user_id, created_at desc)
+  where message_type = 'weekly_report';
 
 alter table public.messages enable row level security;
 

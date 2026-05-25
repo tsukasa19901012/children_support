@@ -12,6 +12,7 @@
 - 子ども数制限（Plus またはトライアル中のみ複数可）
 - Plus 向け `child_sibling_relations`（きょうだい・友達・保護者関係）
 - 保護者プロフィール（`profile_type = caregiver`）— Plus / トライアル、1人まで
+- `messages.message_type`（`chat` / `weekly_report`）— 週次レポート識別
 - `auth.users` 作成時の `public.users` 自動追加
 
 ## 既存環境（本番）

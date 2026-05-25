@@ -11,6 +11,9 @@ import { getJSTDayStartISO } from "../../lib/date";
 import { AccountActions } from "./AccountActions";
 import { ChildManager } from "./ChildManager";
 import { PlanCacheWriter } from "../../features/billing/components/PlanCacheWriter";
+import { WeeklyReportSection } from "../../features/report/components/WeeklyReportSection";
+import { loadWeeklyReports } from "../../features/report/lib/loadWeeklyReports";
+import type { WeeklyReportProfile } from "../../features/report/types";
 import { BRAND } from "../../lib/brand";
 
 const PLAN_COLOR: Record<PlanId, string> = {
@@ -64,6 +67,24 @@ export default async function AccountPage() {
   const { planId, todayUsage, children, activeChildId, siblingRelations } =
     await fetchAccountData(user.id);
   const billing = await fetchUserBilling(user.id);
+  const db = createServiceSupabaseClient();
+
+  let weeklyReports: Awaited<ReturnType<typeof loadWeeklyReports>> = {
+    reports: [],
+    hasMore: false,
+  };
+  let weeklyReportsError = false;
+  try {
+    weeklyReports = await loadWeeklyReports(db, user.id);
+  } catch {
+    weeklyReportsError = true;
+  }
+
+  const reportProfiles: WeeklyReportProfile[] = children.map((c) => ({
+    id: c.id,
+    name: c.name,
+    profileType: c.profile_type as WeeklyReportProfile["profileType"],
+  }));
   const plan = getPlan(planId);
   const isFree = planId === "free";
   const remaining =
@@ -173,6 +194,22 @@ export default async function AccountPage() {
             siblingRelations={siblingRelations}
           />
         </section>
+
+        {weeklyReportsError ? (
+          <section className="bg-white rounded-xl border border-gray-100 p-4">
+            <h2 className="text-sm font-bold text-gray-800 mb-1">振り返りレポート</h2>
+            <p className="text-sm text-gray-400 text-center py-4 leading-relaxed">
+              読み込みに失敗しました。ページを再読み込みしてください。
+            </p>
+          </section>
+        ) : (
+          <WeeklyReportSection
+            userId={user.id}
+            initialReports={weeklyReports.reports}
+            initialHasMore={weeklyReports.hasMore}
+            profiles={reportProfiles}
+          />
+        )}
 
         <AccountActions planId={planId} />
       </div>

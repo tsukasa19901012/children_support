@@ -5,7 +5,7 @@ import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessa
 import { hasPlusAccess, type UserBillingRow } from "../../../../features/billing/planAccess";
 import { createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { formatAge } from "../../../../lib/childAge";
-import { formatWeeklyReportPeriodLabel } from "../../../../lib/date";
+import { getWeeklyReportPeriodDates } from "../../../../lib/date";
 import {
   buildCaregiverChildrenContextBlock,
   buildCaregiverWeeklyReportPrompt,
@@ -98,7 +98,8 @@ async function runWeeklyReport(request: NextRequest) {
   }
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const periodLabel = formatWeeklyReportPeriodLabel();
+  const { start: periodStart, end: periodEnd, label: periodLabel } =
+    getWeeklyReportPeriodDates();
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -185,6 +186,9 @@ async function runWeeklyReport(request: NextRequest) {
             child_id: child.id,
             role: "assistant",
             content: reportText,
+            message_type: "weekly_report",
+            report_period_start: periodStart,
+            report_period_end: periodEnd,
           });
 
           if (insertError) {
