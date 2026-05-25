@@ -85,7 +85,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
 
     await expect(page.getByText(/体験期間中（あと\d+日）/)).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Plus.*\/月/ })
+      page.getByRole("button", { name: "Plusをはじめる" })
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "お支払い管理を開く" })
@@ -100,7 +100,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
 
     await expect(page.getByText("無料プランをご利用中です")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Plus.*\/月/ })
+      page.getByRole("button", { name: "Plusをはじめる" })
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "お支払い管理を開く" })
@@ -118,7 +118,7 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
       page.getByRole("button", { name: "お支払い管理を開く" })
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Plus.*\/月/ })
+      page.getByRole("button", { name: "Plusをはじめる" })
     ).toBeHidden();
   });
 
@@ -156,7 +156,7 @@ test.describe("Stripe Checkout（サンドボックス）", () => {
     await page.goto("/account");
 
     const upgradeBtn = page.getByRole("button", {
-      name: /Plus.*\/月/,
+      name: "Plusをはじめる",
     });
     await expect(upgradeBtn).toBeVisible();
     await upgradeBtn.click();
