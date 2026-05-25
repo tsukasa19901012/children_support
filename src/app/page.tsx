@@ -183,7 +183,7 @@ export default function Home() {
   };
 
   const showUpgradeCta = planLoaded && shouldShowUpgradeCta(planId);
-  const inputDisabled = loading || isLimited;
+  const inputDisabled = loading || isLimited || !input.trim();
   const dailyLimit = hasPlusAccess ? null : getPlan("free").dailyLimit;
   const headerLabel = childName
     ? formatProfileHeaderLabel(childName, childBirthday, profileType)

@@ -418,6 +418,9 @@ function OnboardingForm() {
           </div>
           <h1 className="text-xl font-bold text-gray-800">{title}</h1>
           <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          {error && !isSiblingsOnly && (
+            <p className="text-xs text-red-500 mt-3 leading-relaxed">{error}</p>
+          )}
         </div>
 
         {!isSiblingsOnly && (

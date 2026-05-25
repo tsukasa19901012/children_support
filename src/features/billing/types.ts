@@ -14,7 +14,7 @@ export type Plan = {
   memoryEnabled: boolean;
   /** 長期記憶を会話から更新できるか（Freeは読み取りのみ） */
   memoryUpdateEnabled: boolean;
-  /** 複数子・関係登録・週次レポート */
+  /** 複数子・関係登録・保護者相談・週次レポート */
   plusFeaturesEnabled: boolean;
 };
 

@@ -51,7 +51,7 @@ export function UpgradePlanIntro() {
         {BRAND.subtagline}
       </p>
       <p className="text-xs text-gray-400 mb-4">
-        トライアル終了後も、うちの子の記憶を更新し続けられます
+        トライアル終了後も、うちの子の記憶の更新・保護者（自分）の相談が続けられます
       </p>
     </>
   );

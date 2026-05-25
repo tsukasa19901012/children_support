@@ -407,6 +407,7 @@ export function ChildManager({
       {deleteTarget && (
         <DeleteChildConfirmDialog
           childName={deleteTarget.name}
+          profileType={deleteTarget.profile_type}
           deleting={deleting}
           onConfirm={confirmDelete}
           onCancel={() => !deleting && setDeleteTarget(null)}

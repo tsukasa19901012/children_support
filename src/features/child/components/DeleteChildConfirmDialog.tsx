@@ -1,7 +1,11 @@
 "use client";
 
+import type { ProfileType } from "../types/profileType";
+import { PROFILE_TYPE_CAREGIVER } from "../types/profileType";
+
 type Props = {
   childName: string;
+  profileType?: ProfileType;
   onConfirm: () => void;
   onCancel: () => void;
   deleting?: boolean;
@@ -9,10 +13,13 @@ type Props = {
 
 export function DeleteChildConfirmDialog({
   childName,
+  profileType = "child",
   onConfirm,
   onCancel,
   deleting,
 }: Props) {
+  const isCaregiver = profileType === PROFILE_TYPE_CAREGIVER;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -23,10 +30,14 @@ export function DeleteChildConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-base font-bold text-gray-800 mb-2">
-          {childName}ちゃんを削除しますか？
+          {isCaregiver
+            ? `${childName}さん（保護者）を削除しますか？`
+            : `${childName}ちゃんを削除しますか？`}
         </p>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-          このお子さんの会話履歴・学習内容・きょうだいの関係も削除されます。取り消せません。
+          {isCaregiver
+            ? "保護者としての相談履歴・学習内容が削除されます。取り消せません。"
+            : "このお子さんの会話履歴・学習内容・きょうだいの関係も削除されます。取り消せません。"}
         </p>
         <div className="flex gap-2">
           <button

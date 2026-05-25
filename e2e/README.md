@@ -14,9 +14,18 @@ cp .env.e2e.example .env.e2e.local   # 任意（未設定時は e2e-auto@tonarik
 ## 実行
 
 ```bash
-npm run test:e2e        # 公開ページ + 認証済み + Stripe Checkout
-npm run test:e2e:ui     # UI モード
+npm run test:e2e              # 公開 + 認証済み + イレギュラー + モンキー
+npm run test:e2e:irregular    # イレギュラー（境界値・異常系）のみ
+npm run test:e2e:monkey       # モンキー（ランダム操作）のみ
+npm run test:e2e:ui           # UI モード
 ```
+
+### イレギュラー / モンキー
+
+| ファイル | 内容 |
+|----------|------|
+| `irregular.spec.ts` | API 境界値、不正入力、保護者 Plus 制限、存在しない ID |
+| `monkey.spec.ts` | チャット・マイページ間のランダムクリック・入力（削除・課金は除外） |
 
 ## 認証方式
 

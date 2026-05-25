@@ -39,4 +39,11 @@ test.describe("API（認証なし）", () => {
     const res = await request.post("/api/report/weekly");
     expect(res.status()).toBe(401);
   });
+
+  test("checkout API は未認証で拒否される", async ({ request }) => {
+    const res = await request.post("/api/checkout", {
+      data: { planId: "plus" },
+    });
+    expect([401, 403]).toContain(res.status());
+  });
 });

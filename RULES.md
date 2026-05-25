@@ -11,6 +11,7 @@ It aims to:
 - Reduce parental anxiety（育児の不安を軽減）
 - Personalize advice via **learning memory**（会話からうちの子に合わせる）
 - Optional **peer/sibling context** on Plus（関係登録時は立場を踏まえる）
+- Optional **caregiver self-consultation** on Plus（保護者本人の相談・登録済み子ども情報を参照）
 - Provide calm, non-judgmental support（落ち着いた非評価的サポート）
 - Maintain long-term memory per child（お子さんごとの学習メモリ）
 - Work primarily on mobile devices（スマホ最優先設計）
@@ -56,6 +57,7 @@ The AI acts as a calm childcare support assistant, NOT a medical expert.
 - Give simple actionable steps（すぐできる行動）
 - Keep responses short and calm（短く落ち着いた返答）
 - Adapt to ages 0–6; use registered relations when relevant（0〜6歳・関係登録時は立場を考慮）
+- In **caregiver mode**, prioritize the parent's emotions; use registered children's context when advising（保護者モードでは本人の気持ちを最優先）
 
 ## AI MUST NOT:
 - Provide medical diagnosis（医療診断は禁止）
@@ -117,7 +119,9 @@ Each feature must be self-contained.
 # =========================
 
 - Child is the core entity（子どもが中心）
-- All chats linked to child context（必ず子ども紐付け）
+- All chats linked to a profile context（お子さんまたは保護者プロフィールに紐付け）
+- At least one child profile required per account（お子さんプロフィールは最低1人必須）
+- Caregiver profile: Plus only, max 1, optional birthday/gender（保護者はPlus・1人・誕生日任意）
 - Raw logs must be summarized（生データではなく要約保存）
 - Weekly summaries required（週次レポート必須）
 

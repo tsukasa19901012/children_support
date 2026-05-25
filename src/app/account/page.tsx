@@ -153,16 +153,16 @@ export default async function AccountPage() {
           </div>
         </section>
 
-        {/* 子ども情報 */}
+        {/* お子さん・保護者 */}
         <section className="bg-white rounded-xl border border-gray-100 p-4">
-          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さんと、まわりの関係</h2>
+          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さん・保護者（自分）</h2>
           {billing.hasPlusAccess ? (
             <p className="text-xs text-gray-400 mb-3 leading-relaxed">
-              お子さんを複数登録し、きょうだいや友達の関係を登録すると、より的確な相談ができます。
+              お子さんを複数登録し、きょうだいや友達の関係を登録できます。保護者（自分）の相談も追加できます。
             </p>
           ) : (
             <p className="text-xs text-gray-400 mb-3 leading-relaxed">
-              Plusプランで、複数の子の登録と関係の登録、週次レポートが使えます。
+              Plusプランで、複数の子の登録・関係の登録・保護者（自分）の相談・週次レポートが使えます。
             </p>
           )}
           <ChildManager
