@@ -39,7 +39,7 @@ test.describe("認証済みフロー", () => {
     await page.goto("/account");
     await expect(page.getByText("現在のプラン")).toBeVisible();
     await expect(page.getByText("本日の利用状況")).toBeVisible();
-    await expect(page.getByText("お子さん・保護者（自分）")).toBeVisible();
+    await expect(page.getByText("お子さん・あなた（保護者）")).toBeVisible();
   });
 
   test("相談に切り替えでチャット画面へ遷移する", async ({ page }) => {
@@ -87,8 +87,8 @@ test.describe("課金 UI（Free / トライアル / Plus）", () => {
     await expect(
       page.getByRole("button", { name: "Plusをはじめる" })
     ).toBeVisible();
-    await expect(page.getByText("保護者（自分）を追加する")).toBeVisible();
-    await expect(page.getByText("保護者（自分）の相談")).toBeVisible();
+    await expect(page.getByText("あなた（保護者）を追加する")).toBeVisible();
+    await expect(page.getByText("あなた（保護者）の相談")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "お支払い管理を開く" })
     ).toBeHidden();

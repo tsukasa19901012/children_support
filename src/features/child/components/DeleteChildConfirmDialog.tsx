@@ -31,7 +31,7 @@ export function DeleteChildConfirmDialog({
       >
         <p className="text-base font-bold text-gray-800 mb-2">
           {isCaregiver
-            ? `${childName}さん（保護者）を削除しますか？`
+            ? `${childName}（保護者）を削除しますか？`
             : `${childName}ちゃんを削除しますか？`}
         </p>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">

@@ -191,7 +191,7 @@ function CaregiverOnboardingForm() {
         .eq("id", caregiverId);
       if (err) {
         setError(err.message.includes("Plus")
-          ? "保護者プロフィールの登録にはPlusプランが必要です。"
+          ? "あなた（保護者）の登録にはPlusプランが必要です。"
           : "保存に失敗しました。");
         setSaving(false);
         return;
@@ -205,9 +205,9 @@ function CaregiverOnboardingForm() {
       if (err || !created) {
         setError(
           err?.message?.includes("1人まで")
-            ? "保護者プロフィールは1人まで登録できます。"
+            ? "あなた（保護者）は1人まで登録できます。"
             : err?.message?.includes("Plus")
-              ? "保護者プロフィールの登録にはPlusプランが必要です。"
+              ? "あなた（保護者）の登録にはPlusプランが必要です。"
               : "保存に失敗しました。"
         );
         setSaving(false);
@@ -229,7 +229,7 @@ function CaregiverOnboardingForm() {
       childIds
     );
     if (relErr) {
-      setError("保護者の対象の保存に失敗しました。");
+      setError("お子さんとの関係の保存に失敗しました。");
       setSaving(false);
       return;
     }
@@ -254,11 +254,11 @@ function CaregiverOnboardingForm() {
   const stepIndex = steps.indexOf(step);
 
   const title = isEdit
-    ? "保護者（自分）の情報を編集"
-    : "保護者（自分）を登録";
+    ? "あなた（保護者）の情報を編集"
+    : "あなた（保護者）を登録";
   const subtitle = isEdit
-    ? "自分自身の相談プロフィールを更新します"
-    : "自分の気持ちや疲れについて相談できます";
+    ? "あなた（保護者）としての情報を更新します"
+    : "あなたの気持ちや疲れについて相談できます";
 
   if (loading) {
     return (
@@ -272,7 +272,7 @@ function CaregiverOnboardingForm() {
     return (
       <div className="flex flex-col items-center justify-center min-h-dvh bg-gray-50 px-6">
         <p className="text-sm text-gray-500 mb-4 text-center leading-relaxed">
-          保護者（自分）の相談は、Plusプランまたは体験期間中のみご利用いただけます。
+          あなた（保護者）の相談は、Plusプランまたは体験期間中のみご利用いただけます。
         </p>
         <button
           type="button"
@@ -289,7 +289,7 @@ function CaregiverOnboardingForm() {
     return (
       <div className="flex flex-col items-center justify-center min-h-dvh bg-gray-50 px-6">
         <p className="text-sm text-gray-500 mb-4 text-center leading-relaxed">
-          先にお子さんを1人登録してから、保護者プロフィールを追加してください。
+          先にお子さんを1人登録してから、あなた（保護者）を追加してください。
         </p>
         <button
           type="button"

@@ -50,8 +50,10 @@ export function UpgradePlanIntro() {
         <br />
         {BRAND.subtagline}
       </p>
-      <p className="text-xs text-gray-400 mb-4">
-        トライアル終了後も、うちの子の記憶の更新・保護者（自分）の相談が続けられます
+      <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+        体験期間終了後も、うちの子のことを覚えながら相談できます。
+        <br />
+        あなた（保護者）の相談も、これまで通り続けられます。
       </p>
     </>
   );

@@ -137,12 +137,12 @@ export default async function AccountPage() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">送信回数</span>
             <span className="font-semibold text-gray-800">
-              {todayUsage}
-              {!billing.hasPlusAccess && plan.dailyLimit !== null ? (
-                <span className="text-gray-400 font-normal"> / {plan.dailyLimit}回</span>
-              ) : (
-                <span className="text-gray-400 font-normal"> 回（無制限）</span>
-              )}
+              {todayUsage}回
+              <span className="text-gray-400 font-normal">
+                {!billing.hasPlusAccess && plan.dailyLimit !== null
+                  ? ` / ${plan.dailyLimit}回`
+                  : " / 無制限"}
+              </span>
             </span>
           </div>
           {!billing.hasPlusAccess && remaining !== null && (
@@ -176,14 +176,14 @@ export default async function AccountPage() {
 
         {/* お子さん・保護者 */}
         <section className="bg-white rounded-xl border border-gray-100 p-4">
-          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さん・保護者（自分）</h2>
+          <h2 className="text-sm font-bold text-gray-800 mb-1">お子さん・あなた（保護者）</h2>
           {billing.hasPlusAccess ? (
             <p className="text-xs text-gray-400 mb-3 leading-relaxed">
-              お子さんを複数登録し、きょうだいや友達の関係を登録できます。保護者（自分）の相談も追加できます。
+              お子さんを複数登録し、きょうだいや友達の関係を登録できます。あなた（保護者）の相談も追加できます。
             </p>
           ) : (
             <p className="text-xs text-gray-400 mb-3 leading-relaxed">
-              Plusプランで、複数の子の登録・関係の登録・保護者（自分）の相談・週次レポートが使えます。
+              Plusプランで、複数の子の登録・関係の登録・あなた（保護者）の相談・毎週月曜の振り返りレポートが使えます。
             </p>
           )}
           <ChildManager
@@ -208,6 +208,7 @@ export default async function AccountPage() {
             initialReports={weeklyReports.reports}
             initialHasMore={weeklyReports.hasMore}
             profiles={reportProfiles}
+            receivesWeeklyReports={billing.hasPlusAccess}
           />
         )}
 

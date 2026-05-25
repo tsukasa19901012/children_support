@@ -36,7 +36,7 @@ type Props = {
 const GENDER_LABEL: Record<string, string> = {
   male: "男の子",
   female: "女の子",
-  other: "未回答",
+  other: "答えない",
 };
 
 const actionBtn =
@@ -252,7 +252,7 @@ export function ChildManager({
                   ? "切り替え中..."
                   : needsSelection
                     ? isCaregiver
-                      ? "自分で相談"
+                      ? "保護者として相談"
                       : "この子で相談"
                     : "相談に切り替え"}
               </button>
@@ -344,10 +344,10 @@ export function ChildManager({
       {needsSelection && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs text-amber-700 font-medium mb-0.5">
-            いま相談するプロフィールを選んでください
+            いま相談する相手を選んでください
           </p>
           <p className="text-xs text-amber-600">
-            無料プランでは1人分のみ相談できます。Plusに戻ると登録済みのプロフィールをすべて使えます
+            無料プランでは1人分のみ相談できます。Plusプランにすると登録済みのお子さん・あなた（保護者）をすべて使えます
           </p>
         </div>
       )}
@@ -368,7 +368,7 @@ export function ChildManager({
       {hasPlusFeatures && (
         <div className="pt-2 space-y-3">
           <p className="text-xs font-medium text-gray-500 px-1">
-            保護者（自分）の相談
+            あなた（保護者）の相談
           </p>
           {caregiverProfile ? (
             renderProfileCard(caregiverProfile, true)
@@ -379,18 +379,18 @@ export function ChildManager({
               className="w-full flex items-center justify-center gap-2 border border-dashed border-emerald-200 rounded-2xl py-3 text-sm text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 transition-colors"
             >
               <span className="text-lg leading-none">+</span>
-              保護者（自分）を追加する
+              あなた（保護者）を追加する
             </button>
           )}
           <p className="text-xs text-gray-400 text-center leading-relaxed">
-            自分の気持ちや疲れについて相談できます。登録済みのお子さんの情報も踏まえて回答します。
+            あなたの気持ちや疲れについて相談できます。登録済みのお子さんの情報も踏まえて回答します。
           </p>
         </div>
       )}
 
       {needsSelection && (
         <p className="text-xs text-center text-gray-400 pt-1">
-          Plusなら、お子さんごとの相談と、保護者自身の相談が使えます
+          Plusなら、お子さんごとの相談と、あなた（保護者）の相談が使えます
         </p>
       )}
 

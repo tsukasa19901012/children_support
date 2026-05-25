@@ -184,7 +184,7 @@ export function LoginScreen({
         )}
 
         <p className="mt-auto pt-8 text-center text-[11px] leading-relaxed text-gray-400">
-          初回14日間、Plus相当の機能を無料でお試しいただけます
+          初回14日間、Plusと同じ機能を無料でお試しいただけます
           <br />
           {BRAND.audience}
         </p>

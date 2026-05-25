@@ -296,7 +296,7 @@ export default function Home() {
 
       {planLoaded && trialDaysLeft > 0 && (
         <div className="shrink-0 bg-blue-50 border-b border-blue-100 px-4 py-2 text-xs text-blue-700 text-center leading-relaxed">
-          体験期間中（あと{trialDaysLeft}日）— Plus相当の機能をお試し中です
+          体験期間中（あと{trialDaysLeft}日）、Plusと同じ機能をお試し中です
         </div>
       )}
 
@@ -379,7 +379,7 @@ export default function Home() {
       >
         {isLimited && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-800 text-center">
-            本日の無料利用回数（{dailyLimit}回）を使い切りました。
+            本日の利用上限（{dailyLimit}回）に達しました。
             <button
               type="button"
               onClick={() => setShowUpgrade(true)}

@@ -15,6 +15,7 @@ type Props = {
   initialReports: WeeklyReportItem[];
   initialHasMore: boolean;
   profiles: WeeklyReportProfile[];
+  receivesWeeklyReports: boolean;
 };
 
 const ALL_FILTER = "all";
@@ -41,6 +42,7 @@ export function WeeklyReportSection({
   initialReports,
   initialHasMore,
   profiles,
+  receivesWeeklyReports,
 }: Props) {
   const [reports, setReports] = useState(initialReports);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -86,7 +88,9 @@ export function WeeklyReportSection({
       <section className="bg-white rounded-xl border border-gray-100 p-4">
         <h2 className="text-sm font-bold text-gray-800 mb-1">振り返りレポート</h2>
         <p className="text-xs text-gray-400 mb-3 leading-relaxed">
-          毎週月曜の朝に届いた振り返りを、ここからいつでも読み返せます。
+          {receivesWeeklyReports
+            ? "毎週月曜の朝に届いた振り返りを、ここからいつでも読み返せます。"
+            : "届いた振り返りを、ここからいつでも読み返せます。"}
         </p>
 
         {showFilters && (
@@ -111,7 +115,9 @@ export function WeeklyReportSection({
           <p className="text-sm text-gray-400 text-center py-6 leading-relaxed">
             まだ振り返りレポートは届いていません。
             <br />
-            毎週月曜の朝、こことチャットに届きます。
+            {receivesWeeklyReports
+              ? "毎週月曜の朝、こことチャットに届きます。"
+              : "Plusプランでは、毎週月曜の朝にお届けします。"}
           </p>
         ) : (
           <ul className="space-y-2">

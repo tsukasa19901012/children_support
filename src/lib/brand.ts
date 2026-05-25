@@ -24,7 +24,7 @@ export const BRAND_DISPLAY = `${BRAND.name} — ${BRAND.subtitle}`;
 
 /** チャット初回の挨拶（履歴なし時） */
 export const CHAT_GREETING =
-  "こんにちは。いま気になっていること、短くでも大丈夫です。まずは気持ちを聞かせてもらえれば。";
+  "こんにちは。いま気になっていること、短くでも大丈夫です。まずは気持ちを聞かせてください。";
 
 /** ヘッダーで子ども未選択時の表示 */
 export const CHAT_HEADER_FALLBACK = BRAND.name;

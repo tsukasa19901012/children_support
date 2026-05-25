@@ -223,7 +223,7 @@ AIの回答: ${aiMessage}`;
 
 function getUpgradeMessage(dailyLimit: number): string {
   const plus = getPlan("plus");
-  return `本日の無料枠（${dailyLimit}回）を使い切りました。Plusプラン（月${plus.priceMonthly.toLocaleString()}円）にすると無制限で、うちの子の記憶も更新し続けられます。`;
+  return `本日の利用上限（${dailyLimit}回）に達しました。Plusプラン（月${plus.priceMonthly.toLocaleString()}円）にすると相談し放題で、うちの子のことを覚えながら相談できます。あなた（保護者）の相談も続けられます。`;
 }
 
 const HISTORY_WINDOW_FREE = 5;

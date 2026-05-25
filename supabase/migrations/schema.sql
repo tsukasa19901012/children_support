@@ -211,7 +211,7 @@ begin
 
   if NEW.profile_type = 'caregiver' then
     if user_plan <> 'plus' and now() >= trial_end then
-      raise exception '保護者プロフィールの登録にはPlusプランが必要です。';
+      raise exception 'あなた（保護者）の登録にはPlusプランが必要です。';
     end if;
 
     select count(*) into caregiver_count
@@ -220,7 +220,7 @@ begin
       and profile_type = 'caregiver';
 
     if caregiver_count >= 1 then
-      raise exception '保護者プロフィールは1人まで登録できます。';
+      raise exception 'あなた（保護者）は1人まで登録できます。';
     end if;
 
     return NEW;
@@ -240,7 +240,7 @@ begin
     and profile_type = 'child';
 
   if children_count >= 1 then
-    raise exception '無料プラン（トライアル終了後）はお子さんを1人しか登録できません。Plusプランへのアップグレードが必要です。';
+    raise exception '無料プラン（体験期間終了後）ではお子さんを1人のみ登録できます。Plusプランへのアップグレードが必要です。';
   end if;
 
   return NEW;
