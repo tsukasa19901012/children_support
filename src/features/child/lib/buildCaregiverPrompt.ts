@@ -104,7 +104,8 @@ export function buildCaregiverWeeklyReportPrompt(
   caregiverName: string,
   childrenContext: string,
   messages: { role: string; content: string }[],
-  memory: string | null
+  memory: string | null,
+  periodLabel: string
 ): string {
   const conversationText = messages
     .map((m) => `${m.role === "user" ? "保護者" : "AI"}: ${m.content}`)
@@ -121,15 +122,15 @@ export function buildCaregiverWeeklyReportPrompt(
 名前: ${caregiverName}
 ${childrenContext}
 ${memorySection}
-【今週の相談内容（保護者本人の相談）】
-${conversationText || "（今週は相談がありませんでした）"}
+【${periodLabel}の相談内容（保護者本人の相談）】
+${conversationText || "（この期間は相談がありませんでした）"}
 
 ---
 
 以下の構成で、保護者の自己肯定感を高め、来週への意欲が湧くメッセージを作成してください。
 絵文字を適度に使い、読みやすく温かいトーンで書いてください。
 
-1. 今週の振り返り
+1. この期間の振り返り
    - 何回相談したか・どんな悩み（疲れ・罪悪感・パートナーとのすれ違いなど）に向き合ったか
 
 2. あなたの気持ちへの気づき
@@ -141,6 +142,6 @@ ${conversationText || "（今週は相談がありませんでした）"}
 4. 来週のあなたへのメッセージ
    - 力が抜けて、来週も前向きになれる温かい言葉
 
-最初に「📋 今週の振り返りレポート（${caregiverName}さん・保護者）」と見出しをつけてください。
+最初に「📋 ${periodLabel}の振り返りレポート（${caregiverName}さん・保護者）」と見出しをつけてください。
 トーン：温かく、共感的、押しつけがましくない。専門用語を使わない。`;
 }

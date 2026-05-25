@@ -5,6 +5,7 @@ import { sortMessagesByChatOrder } from "../../../../features/chat/lib/sortMessa
 import { hasPlusAccess, type UserBillingRow } from "../../../../features/billing/planAccess";
 import { createServiceSupabaseClient } from "../../../../lib/supabase-server";
 import { formatAge } from "../../../../lib/childAge";
+import { formatWeeklyReportPeriodLabel } from "../../../../lib/date";
 import {
   buildCaregiverChildrenContextBlock,
   buildCaregiverWeeklyReportPrompt,
@@ -17,7 +18,8 @@ const REPORT_PROMPT = (
   childName: string,
   ageText: string,
   messages: { role: string; content: string }[],
-  memory: string | null
+  memory: string | null,
+  periodLabel: string
 ) => {
   const conversationText = messages
     .map((m) => `${m.role === "user" ? "保護者" : "AI"}: ${m.content}`)
@@ -31,15 +33,15 @@ const REPORT_PROMPT = (
 【お子さんの情報】
 名前: ${childName}（${ageText}）
 ${memorySection}
-【今週の相談内容】
-${conversationText || "（今週は相談がありませんでした）"}
+【${periodLabel}の相談内容】
+${conversationText || "（この期間は相談がありませんでした）"}
 
 ---
 
 以下の構成で、保護者の自己肯定感を高め、来週への意欲が湧くメッセージを作成してください。
 絵文字を適度に使い、読みやすく温かいトーンで書いてください。
 
-1. 今週の振り返り
+1. この期間の振り返り
    - 何回相談したか・どんな悩みに向き合ったかを振り返る
    - 保護者が頑張っていたことを具体的に認める言葉
 
@@ -52,7 +54,7 @@ ${conversationText || "（今週は相談がありませんでした）"}
 4. 来週の保護者へのメッセージ
    - 力が抜けて、来週も前向きになれる温かい言葉
 
-最初に「📋 今週の育児振り返りレポート（${childName}ちゃん）」と見出しをつけてください。
+最初に「📋 ${periodLabel}の育児振り返りレポート（${childName}ちゃん）」と見出しをつけてください。
 トーン：温かく、共感的、押しつけがましくない。専門用語を使わない。`;
 };
 
@@ -96,6 +98,7 @@ async function runWeeklyReport(request: NextRequest) {
   }
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const periodLabel = formatWeeklyReportPeriodLabel();
   const { default: OpenAI } = await import("openai");
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -155,14 +158,16 @@ async function runWeeklyReport(request: NextRequest) {
               child.name,
               childrenContext,
               weekMessages ?? [],
-              child.memory ?? null
+              child.memory ?? null,
+              periodLabel
             );
           } else {
             promptContent = REPORT_PROMPT(
               child.name,
               ageText,
               weekMessages ?? [],
-              child.memory ?? null
+              child.memory ?? null,
+              periodLabel
             );
           }
 
