@@ -56,6 +56,14 @@ body {
   margin: 0;
 }
 
+/* iOS ホーム画面追加: dvh と実際の表示高さのずれを抑える */
+@supports (-webkit-touch-callout: none) {
+  .h-dvh {
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+}
+
 /* iOS Safari: 16px 未満でフォーカス時に自動ズーム（viewport 制限と併用） */
 textarea,
 input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),

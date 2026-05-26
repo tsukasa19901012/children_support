@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChatMarkdown } from "../features/chat/components/ChatMarkdown";
 import { useUserPlan } from "../features/billing/hooks/useUserPlan";
 import { UpgradeModal } from "../features/billing/components/UpgradeModal";
 import { useChatHistory } from "../features/chat/hooks/useChatHistory";
 import type { ChatMessage } from "../features/chat/hooks/useChatHistory";
 import { useAuthUserId } from "../hooks/useAuthUserId";
-import { useKeyboardInset } from "../hooks/useKeyboardInset";
-import { useElementHeight } from "../hooks/useElementHeight";
 import { useAutoResizeTextarea } from "../hooks/useAutoResizeTextarea";
+import { createClient } from "../lib/supabase-browser";
 import { useChildRedirect } from "../features/child/hooks/useChildRedirect";
 import { CHAT_HEADER_FALLBACK } from "../lib/brand";
 import { BrandMark } from "../features/auth/components/BrandMark";
@@ -31,6 +31,7 @@ type DeleteTarget = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [showChildPicker, setShowChildPicker] = useState(false);
   const { userId } = useAuthUserId();
@@ -55,9 +56,6 @@ export default function Home() {
   const [deleting, setDeleting] = useState(false);
   const [rebuildingMemory, setRebuildingMemory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const composerRef = useRef<HTMLDivElement>(null);
-  const keyboardInset = useKeyboardInset();
-  const composerHeight = useElementHeight(composerRef, [isLimited, childChecked]);
   const inputRef = useAutoResizeTextarea(input, 10);
 
   useEffect(() => {
@@ -76,8 +74,21 @@ export default function Home() {
     setLoading(true);
 
     try {
+      const supabase = createClient();
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        router.replace("/login");
+        setMessages((prev) => prev.filter((_, i) => i !== prev.length - 1));
+        setInput(text);
+        return;
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: nextMessages.map((m) => ({
@@ -103,7 +114,22 @@ export default function Home() {
         return;
       }
 
-      if (!res.ok) throw new Error(`status: ${res.status}`);
+      if (!res.ok) {
+        let apiError = "";
+        try {
+          const errBody = (await res.json()) as { error?: string };
+          apiError = errBody.error ?? "";
+        } catch {
+          /* non-JSON */
+        }
+        if (res.status === 401) {
+          router.replace("/login");
+          setMessages((prev) => prev.filter((_, i) => i !== prev.length - 1));
+          setInput(text);
+          return;
+        }
+        throw new Error(apiError || `status: ${res.status}`);
+      }
 
       const data: {
         message: string;
@@ -126,10 +152,14 @@ export default function Home() {
           },
         ];
       });
-    } catch {
+    } catch (err) {
+      const detail =
+        err instanceof Error && err.message && !err.message.startsWith("status:")
+          ? err.message
+          : "エラーが発生しました。もう一度お試しください。";
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: "エラーが発生しました。もう一度お試しください。" },
+        { role: "ai", text: detail },
       ]);
     } finally {
       setLoading(false);
@@ -205,9 +235,9 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-gray-100">
+    <div className="flex flex-col h-dvh max-h-dvh overflow-hidden bg-gray-100">
       {/* Header */}
-      <header className="shrink-0 bg-white border-b px-3 py-2 flex items-center gap-2">
+      <header className="shrink-0 bg-white border-b px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
           {planLoaded && hasPlusAccess && allChildren.length > 1 ? (
             <button
@@ -314,11 +344,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Messages — 下の固定コンポーザー分だけ余白 */}
-      <main
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
-        style={{ paddingBottom: composerHeight > 0 ? composerHeight : undefined }}
-      >
+      {/* Messages */}
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((m, i) => (
           <div
             key={m.id ?? `${m.role}-${i}`}
@@ -371,12 +398,8 @@ export default function Home() {
         <div ref={bottomRef} />
       </main>
 
-      {/* 固定コンポーザー（ChatGPT 方式: bottom のみ visualViewport 追従） */}
-      <div
-        ref={composerRef}
-        className="fixed left-0 right-0 z-10 bg-white border-t border-gray-200"
-        style={{ bottom: keyboardInset }}
-      >
+      {/* コンポーザー（flex 内配置 — iOS ホーム画面追加で fixed+visualViewport が崩れるため） */}
+      <div className="shrink-0 z-10 bg-white border-t border-gray-200">
         {isLimited && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-800 text-center">
             本日の利用上限（{dailyLimit}回）に達しました。

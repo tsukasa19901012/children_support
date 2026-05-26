@@ -53,7 +53,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: "#2563EB",
-  // キーボードはオーバーレイ。入力欄は fixed + visualViewport で追従
+  // キーボードはオーバーレイ。チャット入力は flex 内配置（iOS PWA 向け）
   interactiveWidget: "overlays-content",
 };
 
