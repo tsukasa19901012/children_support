@@ -15,6 +15,7 @@ import { WeeklyReportSection } from "../../features/report/components/WeeklyRepo
 import { loadWeeklyReports } from "../../features/report/lib/loadWeeklyReports";
 import type { WeeklyReportProfile } from "../../features/report/types";
 import { BRAND } from "../../lib/brand";
+import { LegalFooter } from "../../features/marketing/components/LegalFooter";
 
 const PLAN_COLOR: Record<PlanId, string> = {
   free: "bg-gray-100 text-gray-700",
@@ -213,6 +214,8 @@ export default async function AccountPage() {
         )}
 
         <AccountActions planId={planId} />
+
+        <LegalFooter className="pt-4 pb-2" />
       </div>
       </main>
     </div>

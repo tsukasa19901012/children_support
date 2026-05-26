@@ -1,6 +1,36 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  AI_CRAWLER_USER_AGENTS,
+  LEGAL_NOINDEX_PATH,
+  LEGAL_ROBOTS_HEADER,
+} from "./src/lib/crawlerPolicy";
+
+/** 未ログインでも閲覧可能（法務・LP） */
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/auth",
+  "/legal",
+  "/terms",
+  "/privacy",
+  "/contact",
+  "/lp",
+] as const;
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATH_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+function isAiCrawler(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  return AI_CRAWLER_USER_AGENTS.some((bot) =>
+    ua.includes(bot.toLowerCase())
+  );
+}
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -31,6 +61,13 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  if (pathname === LEGAL_NOINDEX_PATH || pathname.startsWith(`${LEGAL_NOINDEX_PATH}/`)) {
+    response.headers.set("X-Robots-Tag", LEGAL_ROBOTS_HEADER);
+    if (isAiCrawler(request.headers.get("user-agent"))) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+  }
+
   // API ルートはリダイレクトしない（各ハンドラが認証エラーを返す）
   // /api/webhook は Stripe からのリクエストなので必ず通す
   if (pathname.startsWith("/api/")) {
@@ -38,7 +75,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 未認証かつ保護ルートへのアクセス → /login にリダイレクト
-  if (!user && pathname !== "/login" && !pathname.startsWith("/auth")) {
+  if (!user && !isPublicPath(pathname)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

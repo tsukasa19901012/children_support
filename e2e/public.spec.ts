@@ -21,6 +21,13 @@ test.describe("公開ページ", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("法務・LP ページが未認証で表示される", async ({ page }) => {
+    for (const path of ["/lp", "/terms", "/privacy", "/contact", "/legal"]) {
+      const res = await page.goto(path);
+      expect(res?.status()).toBe(200);
+    }
+  });
+
   test("キャンセルページ（未認証は login へ）", async ({ page }) => {
     await page.goto("/cancel");
     await expect(page).toHaveURL(/\/login/);

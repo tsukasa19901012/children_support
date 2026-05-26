@@ -109,6 +109,7 @@ docs/               # 仕様・UX・ビジョン
 |----------|------|
 | [docs/CONSIDERATIONS.md](docs/CONSIDERATIONS.md) | 仕様・プラン・制約 |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | 本番運用（Stripe・週次・環境変数） |
+| [docs/LP_REQUIREMENTS.md](docs/LP_REQUIREMENTS.md) | LP・法務ページ要件定義 |
 | [docs/vision.md](docs/vision.md) | プロダクトビジョン |
 | [docs/ux.md](docs/ux.md) | UX 原則 |
 | [supabase/README.md](supabase/README.md) | DB・メール運用 |

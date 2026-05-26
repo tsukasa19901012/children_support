@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { getPlan } from "../plans";
+import { TermsAgreementCheckbox } from "../../marketing/components/TermsAgreementCheckbox";
 
 export function PlusPlanCard() {
   const plan = getPlan("plus");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSelect = async () => {
+    if (!agreedToTerms) return;
     setLoading(true);
     setError(null);
     try {
@@ -56,6 +59,13 @@ export function PlusPlanCard() {
         ))}
       </ul>
 
+      <div className="mb-3">
+        <TermsAgreementCheckbox
+          checked={agreedToTerms}
+          onChange={setAgreedToTerms}
+        />
+      </div>
+
       {error && (
         <p className="mb-2 text-xs text-red-500 text-center">{error}</p>
       )}
@@ -63,7 +73,7 @@ export function PlusPlanCard() {
       <button
         type="button"
         onClick={handleSelect}
-        disabled={loading}
+        disabled={loading || !agreedToTerms}
         className="w-full text-center text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 bg-blue-500 hover:bg-blue-600 text-white"
       >
         {loading ? "処理中..." : "Plusをはじめる"}

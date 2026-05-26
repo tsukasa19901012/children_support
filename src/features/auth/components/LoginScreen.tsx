@@ -1,5 +1,6 @@
 import type { FormEvent, RefObject } from "react";
 import { BRAND } from "../../../lib/brand";
+import { LegalFooter } from "../../marketing/components/LegalFooter";
 import { BrandMark } from "./BrandMark";
 
 const VALUE_POINTS = [
@@ -183,7 +184,8 @@ export function LoginScreen({
           </ul>
         )}
 
-        <p className="mt-auto pt-8 text-center text-[11px] leading-relaxed text-gray-400">
+        <LegalFooter className="mt-auto pt-6" />
+        <p className="pt-4 text-center text-[11px] leading-relaxed text-gray-400">
           初回14日間、Plusと同じ機能を無料でお試しいただけます
           <br />
           {BRAND.audience}

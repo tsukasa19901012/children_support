@@ -159,10 +159,12 @@ test.describe("Stripe Checkout（サンドボックス）", () => {
     await setE2eUserBilling("trial");
     await page.goto("/account");
 
+    await page.getByRole("checkbox").check();
+
     const upgradeBtn = page.getByRole("button", {
       name: "Plusをはじめる",
     });
-    await expect(upgradeBtn).toBeVisible();
+    await expect(upgradeBtn).toBeEnabled();
     await upgradeBtn.click();
 
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });

@@ -79,6 +79,15 @@ npm run test:e2e              # 本番 URL 向け E2E
 
 ---
 
+## お問い合わせフォーム
+
+- ページ: `/contact`
+- API: `POST /api/contact`
+- 必要な環境変数: `RESEND_API_KEY`, `CONTACT_INBOX_EMAIL`, `CONTACT_FROM_EMAIL`
+- `CONTACT_FROM_EMAIL` は Resend で送信ドメイン認証済みのアドレス（例: `となりっこ <noreply@mail.tonarikko.com>`）
+
+---
+
 ## よくある問い合わせ
 
 | 症状 | 確認 |
