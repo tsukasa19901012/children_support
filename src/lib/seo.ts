@@ -1,6 +1,17 @@
 import type { Metadata } from "next";
 import { BRAND, BRAND_DISPLAY, BRAND_LOGO_PATH, BRAND_SITE_URL } from "./brand";
 
+/** 認証不要で配信する SEO メタファイル（middleware でも参照） */
+export const SEO_META_PATHS = [
+  "/sitemap.xml",
+  "/robots.txt",
+  "/site.webmanifest",
+] as const;
+
+export function isSeoMetaPath(pathname: string): boolean {
+  return (SEO_META_PATHS as readonly string[]).includes(pathname);
+}
+
 /** 検索エンジンに載せる公開ページ */
 export const SEO_INDEXABLE_PATHS = [
   "/lp",

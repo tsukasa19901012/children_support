@@ -6,6 +6,7 @@ import {
   LEGAL_NOINDEX_PATH,
   LEGAL_ROBOTS_HEADER,
 } from "./src/lib/crawlerPolicy";
+import { isSeoMetaPath } from "./src/lib/seo";
 
 /** 未ログインでも閲覧可能（法務・LP） */
 const PUBLIC_PATH_PREFIXES = [
@@ -33,6 +34,13 @@ function isAiCrawler(userAgent: string | null): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // sitemap / robots 等は未認証でも配信（Search Console・クローラー向け）
+  if (isSeoMetaPath(pathname)) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -58,8 +66,6 @@ export async function middleware(request: NextRequest) {
 
   // セッションを更新する（アクセストークンの自動リフレッシュ）
   const { data: { user } } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   if (pathname === LEGAL_NOINDEX_PATH || pathname.startsWith(`${LEGAL_NOINDEX_PATH}/`)) {
     response.headers.set("X-Robots-Tag", LEGAL_ROBOTS_HEADER);
@@ -90,6 +96,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // 静的ファイル・_next内部を除くすべてのルートに適用
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap\\.xml|robots\\.txt|site\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
