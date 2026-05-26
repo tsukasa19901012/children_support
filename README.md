@@ -69,6 +69,8 @@ npm run dev
 | `npm run test:e2e` | 本番向け E2E（Playwright） |
 | `npm run supabase:apply-email-templates` | Auth メールテンプレート反映 |
 | `npm run check:deploy` | Vercel デプロイ状態確認 |
+| `npm run check:production-env` | 本番疎通・必須環境変数キー確認 |
+| `npm run cron:weekly-report` | 週次レポート API 手動実行（要 `CRON_SECRET`） |
 
 ---
 
@@ -106,6 +108,7 @@ docs/               # 仕様・UX・ビジョン
 | ファイル | 内容 |
 |----------|------|
 | [docs/CONSIDERATIONS.md](docs/CONSIDERATIONS.md) | 仕様・プラン・制約 |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | 本番運用（Stripe・週次・環境変数） |
 | [docs/vision.md](docs/vision.md) | プロダクトビジョン |
 | [docs/ux.md](docs/ux.md) | UX 原則 |
 | [supabase/README.md](supabase/README.md) | DB・メール運用 |

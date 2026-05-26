@@ -15,7 +15,9 @@
     "test:e2e:monkey": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test monkey.spec.ts",
     "supabase:apply-email-templates": "node scripts/apply-supabase-email-templates.mjs",
     "stripe:apply-branding": "node scripts/apply-stripe-branding.mjs",
-    "check:deploy": "node scripts/check-deploy-status.mjs"
+    "check:deploy": "node scripts/check-deploy-status.mjs",
+    "check:production-env": "node scripts/check-production-env.mjs",
+    "cron:weekly-report": "node scripts/trigger-weekly-report.mjs"
   },
   "dependencies": {
     "@stripe/stripe-js": "^9.5.0",

@@ -85,6 +85,7 @@
 | E2E | `npm run test:e2e` — 本番 URL。詳細は [e2e/README.md](../e2e/README.md) |
 | CI | `.github/workflows/ci.yml` — lint / test / build / Vercel 確認 |
 | デプロイ確認 | `npm run check:deploy` |
+| 本番運用 | [docs/OPERATIONS.md](OPERATIONS.md) — Stripe 返金・週次・環境変数 |
 
 ## 今後
 

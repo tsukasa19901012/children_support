@@ -88,7 +88,9 @@ test.describe("課金 UI（Free / 体験期間 / Plus）", () => {
       page.getByRole("button", { name: "Plusをはじめる" })
     ).toBeVisible();
     await expect(page.getByText("あなた（保護者）を追加する")).toBeVisible();
-    await expect(page.getByText("あなた（保護者）の相談")).toBeVisible();
+    await expect(
+      page.getByText("あなた（保護者）の相談", { exact: true })
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "お支払い管理を開く" })
     ).toBeHidden();

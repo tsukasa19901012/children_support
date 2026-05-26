@@ -7,6 +7,8 @@
 | `npm run supabase:apply-email-templates` | `apply-supabase-email-templates.mjs` | Supabase Auth メールテンプレート・Site URL を Management API で反映 |
 | `npm run stripe:apply-branding` | `apply-stripe-branding.mjs` | Stripe Checkout / 請求書用ロゴ・ブランド色を `public/logo.png` から反映 |
 | `npm run check:deploy` | `check-deploy-status.mjs` | 直近コミットの Vercel デプロイ成功/失敗を表示（要 `gh` ログイン） |
+| `npm run check:production-env` | `check-production-env.mjs` | 本番 URL 疎通・週次 API 401・`.env.local` 必須キー |
+| `npm run cron:weekly-report` | `trigger-weekly-report.mjs` | 週次レポートを本番で手動実行（要 `CRON_SECRET`） |
 
 **ロゴ変更時の推奨順序**
 
