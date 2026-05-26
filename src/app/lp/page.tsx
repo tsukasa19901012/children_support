@@ -1,14 +1,88 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BRAND, BRAND_DISPLAY } from "../../lib/brand";
+import { BRAND } from "../../lib/brand";
 import { PLANS } from "../../features/billing/plans";
 import { LegalFooter } from "../../features/marketing/components/LegalFooter";
 import { BrandMark } from "../../features/auth/components/BrandMark";
+import { JsonLd } from "../../features/marketing/components/JsonLd";
+import {
+  absoluteUrl,
+  createPublicMetadata,
+  SEO_LP_DESCRIPTION,
+  SEO_LP_TITLE,
+} from "../../lib/seo";
 
-export const metadata: Metadata = {
-  title: BRAND_DISPLAY,
-  description: BRAND.description,
-};
+export const metadata: Metadata = createPublicMetadata({
+  title: SEO_LP_TITLE,
+  description: SEO_LP_DESCRIPTION,
+  path: "/lp",
+  priorityTitle: true,
+});
+
+const LP_JSON_LD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: BRAND.name,
+    alternateName: BRAND.subtitle,
+    url: absoluteUrl("/lp"),
+    description: SEO_LP_DESCRIPTION,
+    inLanguage: "ja",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: BRAND.name,
+    applicationCategory: "LifestyleApplication",
+    operatingSystem: "Web",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "JPY",
+      description: "初回14日間無料。以降は無料プランあり。Plusは月額980円。",
+    },
+    description: SEO_LP_DESCRIPTION,
+    url: absoluteUrl("/lp"),
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "無料で使えますか？",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "初回14日間はPlusと同じ機能を無料でお試しいただけます。以降は無料プランでもご利用いただけます。",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "料金はいくらですか？",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Plusプランは月額980円（税込）です。マイページからいつでも解約できます。",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "医療的なアドバイスですか？",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "育児の相談を支援するAIであり、医療診断や治療は行いません。",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "解約・返金は？",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "解約はマイページから行えます。返金は原則行っておりません。個別の事情はお問い合わせフォームよりご連絡ください。",
+        },
+      },
+    ],
+  },
+];
 
 const FAQ = [
   {
@@ -35,6 +109,7 @@ export default function LpPage() {
 
   return (
     <div className="min-h-dvh bg-[#f4f7fb]">
+      <JsonLd data={LP_JSON_LD} />
       <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 text-center">
         <div className="flex justify-center mb-4">
           <BrandMark size="lg" />
@@ -51,7 +126,7 @@ export default function LpPage() {
         </Link>
       </header>
 
-      <main className="max-w-lg mx-auto px-5 pb-10 space-y-8">
+      <main id="main-content" className="max-w-lg mx-auto px-5 pb-10 space-y-8">
         <section>
           <h2 className="text-sm font-bold text-gray-800 mb-3">こんなときに</h2>
           <ul className="space-y-2 text-sm text-gray-600 leading-relaxed">

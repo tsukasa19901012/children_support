@@ -5,12 +5,26 @@ import {
   BRAND_LOGO_PATH,
   BRAND_SITE_URL,
 } from "../lib/brand";
+import { absoluteUrl } from "../lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND_SITE_URL),
-  title: BRAND_DISPLAY,
+  title: {
+    default: BRAND_DISPLAY,
+    template: `%s — ${BRAND.name}`,
+  },
   description: `${BRAND.description}（${BRAND.audience}）`,
+  keywords: [
+    "育児",
+    "育児AI",
+    "子育て",
+    "育児相談",
+    "となりっこ",
+  ],
+  alternates: {
+    canonical: absoluteUrl("/lp"),
+  },
   applicationName: BRAND.name,
   manifest: "/site.webmanifest",
   icons: {

@@ -72,6 +72,8 @@ npm run dev
 | `npm run check:production-env` | 本番疎通・必須環境変数キー確認 |
 | `npm run cron:weekly-report` | 週次レポート API 手動実行（要 `CRON_SECRET`） |
 
+**SEO:** 公開ページは `/lp`・`/terms`・`/privacy`・`/contact`。`sitemap.xml` と `robots.txt` を自動生成。設定は `src/lib/seo.ts`。
+
 ---
 
 ## CI / デプロイ

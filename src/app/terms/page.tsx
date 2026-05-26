@@ -3,11 +3,13 @@ import { BRAND } from "../../lib/brand";
 import { LegalDocument } from "../../features/marketing/components/LegalDocument";
 import { MarketingShell } from "../../features/marketing/components/MarketingShell";
 import { TERMS_SECTIONS, TERMS_UPDATED_AT } from "../../features/marketing/termsContent";
+import { createPublicMetadata } from "../../lib/seo";
 
-export const metadata: Metadata = {
-  title: `利用規約 — ${BRAND.name}`,
-  description: `${BRAND.name}の利用規約`,
-};
+export const metadata: Metadata = createPublicMetadata({
+  title: "利用規約",
+  description: `${BRAND.name}（${BRAND.subtitle}）の利用規約。プラン、解約、返金ポリシーなど。`,
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

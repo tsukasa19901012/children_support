@@ -16,6 +16,20 @@ test.describe("公開ページ", () => {
     expect((await request.get("/site.webmanifest")).status()).toBe(200);
   });
 
+  test("sitemap.xml と robots.txt が配信される", async ({ request }) => {
+    const sitemap = await request.get("/sitemap.xml");
+    expect(sitemap.status()).toBe(200);
+    const body = await sitemap.text();
+    expect(body).toContain("/lp");
+    expect(body).toContain("/terms");
+
+    const robots = await request.get("/robots.txt");
+    expect(robots.status()).toBe(200);
+    const robotsText = await robots.text();
+    expect(robotsText).toContain("Sitemap:");
+    expect(robotsText).toContain("/legal");
+  });
+
   test("未認証で / は /login にリダイレクト", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/login/);

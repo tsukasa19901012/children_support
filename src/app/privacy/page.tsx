@@ -6,11 +6,13 @@ import {
   PRIVACY_SECTIONS,
   PRIVACY_UPDATED_AT,
 } from "../../features/marketing/privacyContent";
+import { createPublicMetadata } from "../../lib/seo";
 
-export const metadata: Metadata = {
-  title: `プライバシーポリシー — ${BRAND.name}`,
-  description: `${BRAND.name}のプライバシーポリシー`,
-};
+export const metadata: Metadata = createPublicMetadata({
+  title: "プライバシーポリシー",
+  description: `${BRAND.name}における個人情報の取り扱い（取得項目、利用目的、第三者提供等）。`,
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

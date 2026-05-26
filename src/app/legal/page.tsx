@@ -3,10 +3,7 @@ import Link from "next/link";
 import { BRAND } from "../../lib/brand";
 import { LEGAL_ROBOTS_HEADER } from "../../lib/crawlerPolicy";
 import { LegalFooter } from "../../features/marketing/components/LegalFooter";
-import {
-  LEGAL_NOTICE,
-  displayLegalField,
-} from "../../features/marketing/legalContent";
+import { LEGAL_NOTICE } from "../../features/marketing/legalContent";
 
 export const metadata: Metadata = {
   title: `特定商取引法に基づく表記 — ${BRAND.name}`,
@@ -28,17 +25,7 @@ export const metadata: Metadata = {
 
 const ROWS: { label: string; value: string }[] = [
   { label: "販売事業者", value: LEGAL_NOTICE.sellerName },
-  {
-    label: "運営責任者",
-    value: displayLegalField(LEGAL_NOTICE.responsiblePerson),
-  },
-  { label: "所在地", value: displayLegalField(LEGAL_NOTICE.address) },
-  {
-    label: "電話番号",
-    value: LEGAL_NOTICE.phone.trim()
-      ? LEGAL_NOTICE.phone
-      : LEGAL_NOTICE.phoneDisclosureNote,
-  },
+  { label: "電話番号", value: LEGAL_NOTICE.phoneDisclosureNote },
   { label: "お問い合わせ", value: LEGAL_NOTICE.contactLabel },
   { label: "販売URL", value: LEGAL_NOTICE.salesUrl },
   { label: "販売価格", value: LEGAL_NOTICE.price },
@@ -54,12 +41,9 @@ export default function LegalPage() {
   return (
     <div className="min-h-dvh bg-[#f4f7fb] px-5 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
       <article className="mx-auto max-w-lg rounded-2xl border border-gray-100 bg-white px-6 py-8 shadow-sm">
-        <h1 className="text-lg font-bold text-gray-800 mb-2">
+        <h1 className="text-lg font-bold text-gray-800 mb-6">
           特定商取引法に基づく表記
         </h1>
-        <p className="text-xs text-gray-400 mb-6">
-          運営責任者・所在地は準備中です（確定後に更新します）。
-        </p>
         <dl className="space-y-4 text-sm text-gray-700">
           {ROWS.map(({ label, value }) => (
             <div key={label}>
